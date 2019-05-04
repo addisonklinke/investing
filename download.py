@@ -30,4 +30,3 @@ def timeseries(symbol, length='compact', out_dir='/mnt/stocks'):
         pickle.dump(current, open(fpath, 'wb'))
     else:
         pickle.dump(ts, open(fpath, 'wb'))
-

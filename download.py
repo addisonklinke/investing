@@ -2,7 +2,7 @@ import json
 import os
 import pickle
 import requests
-from investing import key
+from investing import keys
 
 
 def timeseries(symbol, length='compact', out_dir='/mnt/stocks'):
@@ -16,7 +16,7 @@ def timeseries(symbol, length='compact', out_dir='/mnt/stocks'):
     :return: None
     """
     url = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={}&outputsize={}&apikey={}'
-    r = requests.get(url.format(symbol, length, key))
+    r = requests.get(url.format(symbol, length, keys['alpha-vantage']))
     data = json.loads(r.content)
     try:
         ts = {k: float(v['4. close']) for k, v in data['Time Series (Daily)'].items()}

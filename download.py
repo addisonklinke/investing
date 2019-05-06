@@ -6,17 +6,42 @@ import os
 import pickle
 import time
 from urllib.parse import quote_plus
+from warnings import warn
 import requests
 from investing import keys
 
+_ww_endpoint = 'https://whalewisdom.com/shell/command.json?args={}&api_shared_key={}&api_sig={}&timestamp={}'
 
-def holdings(company='berkshire'):
-    url = 'https://whalewisdom.com/shell/command.json?args={}&api_shared_key={}&api_sig={}&timestamp={}'
-    url_json = '{"command":"quarters"}'
-    now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
-    sig = _whale_wisdom_signature(url_json, now)
-    api_url = url.format(quote_plus(url_json), keys['whale-wisdom']['shared'], sig, now)
-    r = requests.get(api_url)
+
+def filer_id(company):
+    """Get Whale Wisdom internal ID for filer.
+
+    :param str company: Name of the company (does not have to be exact).
+    :return int id: None if no matches were found.
+    """
+    url_json = '{{"command":"filer_lookup", "name":"{}"}}'.format(company)
+    sig, now = _whale_wisdom_signature(url_json)
+    r = requests.get(_ww_endpoint.format(quote_plus(url_json), keys['whale-wisdom']['shared'], sig, now))
+    data = json.loads(r.content)
+    if len(data['filers']) > 1:
+        warn('Multiple matches for {}, defaulting to first'.format(company))
+    if len(data['filers']) > 0:
+        id = data['filers'][0]['id']
+    else:
+        id = None
+    return id
+
+
+def holdings(company='BERKSHIRE HATHAWAY INC'):
+    """Save list of stock holdings for a particular company.
+
+    :param str company: Name of the company (does not have to be exact).
+    :return: None
+    """
+    id = filer_id(company)
+    url_json = '{{"command":"holdings", "filer_ids":[{}]}}'.format(id)
+    sig, now = _whale_wisdom_signature(url_json)
+    r = requests.get(_ww_endpoint.format(quote_plus(url_json), keys['whale-wisdom']['shared'], sig, now))
     print(r.status_code)
     print(r.content)
 
@@ -48,18 +73,19 @@ def timeseries(symbol, length='compact', out_dir='/mnt/stocks'):
         pickle.dump(ts, open(fpath, 'wb'))
 
 
-def _whale_wisdom_signature(url_json, now):
+def _whale_wisdom_signature(url_json):
     """Create hash from secret key based on Whale Wisdom procedure.
 
     See https://whalewisdom.com/python3_api_sample.txt
 
     :param str url_json: Parameters for API endpoint.
     :param str now: Timestamp string for the request.
-    :return str sig: Constructed using HMAC-SHA1 algorithm.
+    :return tuple: Signature from HMAC-SHA1 algorithm and timestamp.
     """
     key = keys['whale-wisdom']['secret'].encode()
     digest = hashlib.sha1
+    now = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     hash_args = '{}\n{}'.format(url_json, now).encode()
     hmac_hash = hmac.new(key, hash_args, digest).digest()
     sig = base64.b64encode(hmac_hash).rstrip().decode()
-    return sig
+    return sig, now

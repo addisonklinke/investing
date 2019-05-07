@@ -8,5 +8,5 @@ keys = {
     'stock-news': 'uwo11fnch2fuqi5z2nle6aiw9qtt8nmaokixvynk'}
 ticker_to_name = load(open('./data/ticker_to_name.pkl', 'rb'))
 endpoints = {
-    'whale-wisdom': 'https://whalewisdom.com/shell/command.json?args={}&api_shared_key={}&api_sig={}&timestamp={}',
+    'whale-wisdom': 'https://whalewisdom.com/shell/command.json',
     'stock-news': 'https://stocknewsapi.com'}

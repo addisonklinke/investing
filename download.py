@@ -5,7 +5,6 @@ import json
 import os
 import pickle
 import time
-from urllib.parse import quote_plus
 from warnings import warn
 import requests
 from investing import keys, endpoints
@@ -19,8 +18,13 @@ def filer_id(company):
     """
     url_json = '{{"command":"filer_lookup", "name":"{}"}}'.format(company)
     sig, now = _whale_wisdom_signature(url_json)
-    url = endpoints['whale-wisdom'].format(quote_plus(url_json), keys['whale-wisdom']['shared'], sig, now)
-    r = requests.get(url)
+    r = requests.get(
+        url=endpoints['whale-wisdom'],
+        params={
+            'args': url_json,
+            'api_shared_key': keys['whale-wisdom']['shared'],
+            'api_sig': sig,
+            'timestamp': now})
     data = json.loads(r.content)
     if len(data['filers']) > 1:
         warn('Multiple matches for {}, defaulting to first'.format(company))
@@ -40,8 +44,13 @@ def holdings(company='BERKSHIRE HATHAWAY INC'):
     id = filer_id(company)
     url_json = '{{"command":"holdings", "filer_ids":[{}]}}'.format(id)
     sig, now = _whale_wisdom_signature(url_json)
-    url = endpoints['whale-wisdom'].format(quote_plus(url_json), keys['whale-wisdom']['shared'], sig, now)
-    r = requests.get(url)
+    r = requests.get(
+        url=endpoints['whale-wisdom'],
+        params={
+            'args': url_json,
+            'api_shared_key': keys['whale-wisdom']['shared'],
+            'api_sig': sig,
+            'timestamp': now})
     print(r.status_code)
     print(r.content)
 

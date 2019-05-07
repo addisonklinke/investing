@@ -56,13 +56,25 @@ def holdings(company='BERKSHIRE HATHAWAY INC'):
 
 
 def stock_news(ticker=None, items=50):
-    params = {'token': keys['stock-news'], 'items': items}
-    if ticker is not None:
-        params.update({'tickers': ticker})
-    else:
-        params.update({'section': 'alltickers'})
-    r = requests.get(endpoints['stock-news'], params)
+    """Gather news articles for general market or a specific ticker.
 
+    :param str ticker: Defaults to ``None`` for general market news.
+    :param int items: Number of articles to return (max allowed for free
+        subscription is 50).
+    :return:
+    """
+    if items > 50:
+        warn('More than 50 items is not supported by free tier')
+    url = endpoints['stock-news']
+    if ticker is not None:
+        params = {'tickers': ticker}
+    else:
+        url = os.path.join(url, 'cateogry')
+        params = {'section': 'alltickers'}
+    params.update({'items': items, 'token': keys['stock-news']})
+    r = requests.get(url, params)
+    data = json.loads(r.content)
+    negative = [(i, d, d['tickers']) for i, d in enumerate(data['data']) if d['sentiment'] == 'Negative']
 
 def timeseries(symbol, length='compact', out_dir='/mnt/stocks'):
     """Save JSON formatted pickle of stock prices from Alpha Vantage API.

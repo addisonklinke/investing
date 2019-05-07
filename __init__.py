@@ -9,4 +9,4 @@ keys = {
 ticker_to_name = load(open('./data/ticker_to_name.pkl', 'rb'))
 endpoints = {
     'whale-wisdom': 'https://whalewisdom.com/shell/command.json',
-    'stock-news': 'https://stocknewsapi.com'}
+    'stock-news': 'https://stocknewsapi.com/api/v1'}

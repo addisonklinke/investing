@@ -55,6 +55,15 @@ def holdings(company='BERKSHIRE HATHAWAY INC'):
     print(r.content)
 
 
+def stock_news(ticker=None, items=50):
+    params = {'token': keys['stock-news'], 'items': items}
+    if ticker is not None:
+        params.update({'tickers': ticker})
+    else:
+        params.update({'section': 'alltickers'})
+    r = requests.get(endpoints['stock-news'], params)
+
+
 def timeseries(symbol, length='compact', out_dir='/mnt/stocks'):
     """Save JSON formatted pickle of stock prices from Alpha Vantage API.
 

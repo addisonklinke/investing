@@ -1,13 +1,14 @@
 import argparse
+import os
 import re
 import sys
 import git
 from stringcase import camelcase, capitalcase, snakecase
-from investing import InvestingLogging, pkg_dir, save_dir
+import investing
 import investing.download as download
 
 
-class Launcher(InvestingLogging):
+class Launcher(investing.InvestingLogging):
     """Define and run investing workflows.
 
     Each method should define a workflow (i.e. a combination of tasks using
@@ -25,7 +26,7 @@ class Launcher(InvestingLogging):
         self.workflow = workflow
         self.save = save
         if self.save == 'None':
-            self.save = save_dir
+            self.save = investing.save_dir
         self.branch = branch
         self.workflows = [capitalcase(camelcase(item)) for item in dir(self)
                           if callable(getattr(self, item)) and not item.startswith('__')]
@@ -33,13 +34,13 @@ class Launcher(InvestingLogging):
     def __call__(self):
         """Checkout requested branch and run the desired workflow."""
         if self.workflow not in self.workflows:
-            self.logger.error('Expected workflow to be one of {}, but received \'{}\''.format(
+            print('Expected workflow to be one of {}, but received \'{}\''.format(
                 self.workflows, self.workflow))
             sys.exit(1)
 
         self.logger.info('Running the {} workflow'.format(self.workflow))
         load_stash = False
-        repo = git.Repo(pkg_dir)
+        repo = git.Repo(investing.pkg_dir)
         repo.git.config('--global', 'user.email', 'agk38@case.edu')
         repo.git.config('--global', 'user.name', 'Addison Klinke')
         branches = repo.git.branch().split('\n')
@@ -71,7 +72,13 @@ class Launcher(InvestingLogging):
 
     def monitor_portfolios(self):
         """Check holdings of major investment firms such as Berkshire Hathaway"""
-        pass
+        held_tickers = []
+        for ticker, investor in investing.following.items():
+            held_tickers += download.holdings(ticker)
+        unique = set(held_tickers)
+        with open(os.path.join(investing.save_dir, 'portfolios.txt'), 'w') as f:
+            for ticker in unique:
+                f.write('{}\n'.format(ticker))
 
 
 if __name__ == '__main__':

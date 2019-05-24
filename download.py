@@ -7,7 +7,7 @@ import requests
 from investing import keys, endpoints, save_dir
 
 
-def holdings(ticker='BRK'):
+def holdings(ticker):
     """Save list of stock holdings for a particular company.
 
     :param str ticker: Company ticker (case insensitive).

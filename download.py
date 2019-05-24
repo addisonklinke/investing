@@ -4,7 +4,7 @@ import pickle
 from warnings import warn
 import pandas as pd
 import requests
-from investing import keys, endpoints
+from investing import keys, endpoints, save_dir
 
 
 def holdings(ticker='BRK'):
@@ -42,7 +42,7 @@ def news(ticker=None, items=50):
     return articles
 
 
-def timeseries(ticker, length='compact', out_dir='/mnt/stocks'):
+def timeseries(ticker, length='compact', out_dir=None):
     """Save JSON formatted pickle of stock prices from Alpha Vantage API.
 
     If ticker exists locally, new results will be appended to the current data
@@ -52,6 +52,8 @@ def timeseries(ticker, length='compact', out_dir='/mnt/stocks'):
     :param str out_dir: Directory to save pickle file
     :return: None
     """
+    if out_dir is None:
+        out_dir = save_dir
     r = requests.get(
         url=endpoints['alpha-vantage'],
         params={

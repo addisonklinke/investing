@@ -4,7 +4,7 @@ import pickle
 from warnings import warn
 import pandas as pd
 import requests
-from investing import keys, endpoints, save_dir
+from investing import keys, endpoints, conf
 
 
 def holdings(ticker):
@@ -53,7 +53,7 @@ def timeseries(ticker, length='compact', out_dir=None):
     :return: None
     """
     if out_dir is None:
-        out_dir = save_dir
+        out_dir = conf['paths']['save']
     r = requests.get(
         url=endpoints['alpha-vantage'],
         params={

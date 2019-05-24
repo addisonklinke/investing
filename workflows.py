@@ -26,7 +26,7 @@ class Launcher(investing.InvestingLogging):
         self.workflow = workflow
         self.save = save
         if self.save == 'None':
-            self.save = investing.save_dir
+            self.save = investing.conf['paths']['save']
         self.branch = branch
         self.workflows = [capitalcase(camelcase(item)) for item in dir(self)
                           if callable(getattr(self, item)) and not item.startswith('__')]
@@ -40,7 +40,7 @@ class Launcher(investing.InvestingLogging):
 
         self.logger.info('Running the {} workflow'.format(self.workflow))
         load_stash = False
-        repo = git.Repo(investing.pkg_dir)
+        repo = git.Repo('.')
         repo.git.config('--global', 'user.email', 'agk38@case.edu')
         repo.git.config('--global', 'user.name', 'Addison Klinke')
         branches = repo.git.branch().split('\n')
@@ -73,10 +73,10 @@ class Launcher(investing.InvestingLogging):
     def monitor_portfolios(self):
         """Check holdings of major investment firms such as Berkshire Hathaway"""
         held_tickers = []
-        for ticker, investor in investing.following.items():
+        for ticker, investor in investing.conf['following'].items():
             held_tickers += download.holdings(ticker)
         unique = set(held_tickers)
-        with open(os.path.join(investing.save_dir, 'portfolios.txt'), 'w') as f:
+        with open(os.path.join(investing.conf['paths']['save'], 'portfolios.txt'), 'w') as f:
             for ticker in unique:
                 f.write('{}\n'.format(ticker))
 

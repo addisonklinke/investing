@@ -1,10 +1,9 @@
 import json
 import os
-import pickle
 from warnings import warn
 import pandas as pd
 import requests
-from investing import keys, endpoints, conf
+from investing import keys, endpoints
 
 
 def holdings(ticker):
@@ -42,18 +41,13 @@ def news(ticker=None, items=50):
     return articles
 
 
-def timeseries(ticker, length='compact', out_dir=None):
-    """Save JSON formatted pickle of stock prices from Alpha Vantage API.
-
-    If ticker exists locally, new results will be appended to the current data
+def timeseries(ticker, length='compact'):
+    """Download stock prices from Alpha Vantage API.
 
     :param str ticker: Uppercase stock abbreviation.
     :param str length: Either compact (last 100 days) or full (20 years).
-    :param str out_dir: Directory to save pickle file
-    :return: None
+    :return dict ts: Timestamps as keys and closing prices as values.
     """
-    if out_dir is None:
-        out_dir = conf['paths']['save']
     r = requests.get(
         url=endpoints['alpha-vantage'],
         params={
@@ -65,12 +59,6 @@ def timeseries(ticker, length='compact', out_dir=None):
     try:
         ts = {k: float(v['4. close']) for k, v in data['Time Series (Daily)'].items()}
     except KeyError:
-        raise ValueError('Invalid stock ticker {}'.format(ticker))
-    fpath = os.path.join(out_dir, '{}.pkl'.format(ticker.lower()))
-    if os.path.exists(fpath):
-        current = pickle.load(open(fpath, 'rb'))
-        new = {k: v for k, v in ts.items() if k > max(current.keys())}
-        current.update(new)
-        pickle.dump(current, open(fpath, 'wb'))
-    else:
-        pickle.dump(ts, open(fpath, 'wb'))
+        warn('Invalid stock ticker {}'.format(ticker))
+        ts = {}
+    return ts

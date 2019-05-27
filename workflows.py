@@ -1,5 +1,6 @@
 import argparse
 import os
+import pickle
 import re
 import sys
 import git
@@ -38,7 +39,7 @@ class Launcher(investing.InvestingLogging):
                 self.workflows, self.workflow))
             sys.exit(1)
 
-        self.logger.info('Running the {} workflow'.format(self.workflow))
+        self.logger.info('Running the {} workflow on {} branch'.format(self.workflow, self.branch))
         load_stash = False
         repo = git.Repo('.')
         repo.git.config('--global', 'user.email', 'agk38@case.edu')
@@ -68,7 +69,28 @@ class Launcher(investing.InvestingLogging):
 
     def daily_tickers(self):
         """Download new time series data for followed tickers"""
-        pass
+        with open(os.path.join(investing.conf['paths']['save'], 'portfolios.txt'), 'r') as f:
+            tickers = [l.strip() for l in f.read().split('\n') if l != '']
+        self.logger.info('Found {} tickers to check prices for'.format(len(tickers)))
+        for t in tickers:
+            path = os.path.join(investing.conf['paths']['save'], '{}.pkl'.format(t.lower()))
+            if os.path.exists(path):
+                current = pickle.load(open(path, 'rb'))
+                ts = download.timeseries(t, 'compact')
+                if len(ts) == 0:
+                    self.logger.warning('No data found for {}'.format(t.upper()))
+                    continue
+                new = {k: v for k, v in ts.items() if k > max(current.keys())}
+                current.update(new)
+                pickle.dump(current, open(path, 'wb'))
+                self.logger.info('{} data exists locally, appending latest'.format(t.upper()))
+            else:
+                ts = download.timeseries(t, 'full')
+                if len(ts) == 0:
+                    self.logger.warning('No data found for {}'.format(t.upper()))
+                    continue
+                pickle.dump(ts, open(path, 'wb'))
+                self.logger.info('{} not found locally, downloading last 20 years'.format(t.upper()))
 
     def monitor_portfolios(self):
         """Check holdings of major investment firms such as Berkshire Hathaway"""

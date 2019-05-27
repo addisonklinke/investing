@@ -17,3 +17,11 @@ cd investing
 pip install requirements.txt
 sudo ln -s /path/to/investing /path/on/python/path
 ```
+
+## Configuration
+
+Default configuration values are located in the file 
+`config/investing.conf.defaults`. To override, create a new file called 
+`config/investing.conf` and populate it according the default template. Any 
+values from the user-created config file will take precedence over the default 
+config file at runtime. 

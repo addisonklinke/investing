@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import pickle
 import re
@@ -17,12 +18,17 @@ class Launcher(InvestingLogging):
     __main__ method.
 
     :param str workflow: Camel cased name of method to run.
+    :param bool foreground: Whether or not to log messsages to stdout
     :param str save: Local filepath to save results to
     :param str branch: Name of git branch to use when running.
     """
 
-    def __init__(self, workflow, save=None, branch='master'):
+    def __init__(self, workflow, foreground=False, save=None, branch='master'):
         super(Launcher, self).__init__()
+        if foreground:
+            stdout = logging.StreamHandler(stream=sys.stdout)
+            stdout.setFormatter(self.formatter)
+            self.logger.addHandler(stdout)
         self.workflow = workflow
         self.save = save
         if self.save == 'None':
@@ -113,6 +119,7 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('workflow', type=str, nargs='?', default='None', help='name of workflow to run')
     parser.add_argument('-b', '--branch', type=str, default='master', help='git branch to run the workflow')
+    parser.add_argument('-f', '--foreground', action='store_true', help='print logs to stdout in addition to file')
     parser.add_argument('-l', '--list', action='store_true', help='display available workflows and descriptions')
     parser.add_argument('-s', '--save', type=str, default=None, help='local folder to save results in')
     args = parser.parse_args()
@@ -120,7 +127,7 @@ if __name__ == '__main__':
     if args.workflow == 'None' and not args.list:
         print('Workflow name must be supplied if --list flag is not used')
         sys.exit(1)
-    launcher = Launcher(args.workflow, args.save, args.branch)
+    launcher = Launcher(args.workflow, args.foreground, args.save, args.branch)
     if args.list:
         print('The following workflows are available')
         for w in launcher.workflows:

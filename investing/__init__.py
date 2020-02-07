@@ -51,14 +51,14 @@ class InvestingLogging:
             self.module = 'workflows.Launcher'
         self.logger = logging.getLogger(self.module)
         self.logger.propagate = False
-        formatter = logging.Formatter(
+        self.formatter = logging.Formatter(
             fmt='%(asctime)s %(name)s %(levelname)8s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S')
         handler = RotatingFileHandler(
             filename=os.path.join(conf['paths']['save'], '{}.log'.format(__name__)),
             maxBytes=10000000,
             backupCount=4)
-        handler.setFormatter(formatter)
+        handler.setFormatter(self.formatter)
         self.logger.addHandler(handler)
         self.logger.setLevel(logging.DEBUG)
         self.logger.info('New {} class initialized'.format(self.name))

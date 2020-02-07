@@ -68,7 +68,11 @@ class Launcher(InvestingLogging):
 
     def daily_tickers(self):
         """Download new time series data for followed tickers"""
-        with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'r') as f:
+        portfolio = os.path.join(conf['paths']['save'], 'portfolios.txt')
+        if not os.path.exists(portfolio):
+            print(f'Portfolio list not found at {portfolio}, please run MonitorPortfolios workflow first')
+            return
+        with open(portfolio, 'r') as f:
             tickers = [l.strip() for l in f.read().split('\n') if l != '']
         self.logger.info('Found {} tickers to check prices for'.format(len(tickers)))
         for t in tickers:

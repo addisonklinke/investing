@@ -3,7 +3,7 @@ import os
 from warnings import warn
 import pandas as pd
 import requests
-from investing import keys, endpoints
+from . import keys, endpoints
 
 
 def holdings(ticker):

@@ -5,11 +5,10 @@ import re
 import sys
 import git
 from stringcase import camelcase, capitalcase, snakecase
-import investing
-import investing.download as download
+from investing import conf, download, InvestingLogging
 
 
-class Launcher(investing.InvestingLogging):
+class Launcher(InvestingLogging):
     """Define and run investing workflows.
 
     Each method should define a workflow (i.e. a combination of tasks using
@@ -27,7 +26,7 @@ class Launcher(investing.InvestingLogging):
         self.workflow = workflow
         self.save = save
         if self.save == 'None':
-            self.save = investing.conf['paths']['save']
+            self.save = conf['paths']['save']
         self.branch = branch
         self.workflows = [capitalcase(camelcase(item)) for item in dir(self)
                           if callable(getattr(self, item)) and not item.startswith('__')]
@@ -69,11 +68,11 @@ class Launcher(investing.InvestingLogging):
 
     def daily_tickers(self):
         """Download new time series data for followed tickers"""
-        with open(os.path.join(investing.conf['paths']['save'], 'portfolios.txt'), 'r') as f:
+        with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'r') as f:
             tickers = [l.strip() for l in f.read().split('\n') if l != '']
         self.logger.info('Found {} tickers to check prices for'.format(len(tickers)))
         for t in tickers:
-            path = os.path.join(investing.conf['paths']['save'], '{}.pkl'.format(t.lower()))
+            path = os.path.join(conf['paths']['save'], '{}.pkl'.format(t.lower()))
             if os.path.exists(path):
                 current = pickle.load(open(path, 'rb'))
                 ts = download.timeseries(t, 'compact')
@@ -95,10 +94,10 @@ class Launcher(investing.InvestingLogging):
     def monitor_portfolios(self):
         """Check holdings of major investment firms such as Berkshire Hathaway"""
         held_tickers = []
-        for ticker, investor in investing.conf['following'].items():
+        for ticker, investor in conf['following'].items():
             held_tickers += download.holdings(ticker)
         unique = set(held_tickers)
-        with open(os.path.join(investing.conf['paths']['save'], 'portfolios.txt'), 'w') as f:
+        with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'w') as f:
             for ticker in unique:
                 f.write('{}\n'.format(ticker))
 

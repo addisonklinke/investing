@@ -4,6 +4,7 @@ import os
 import pickle
 import re
 import sys
+from time import sleep
 import git
 from stringcase import camelcase, capitalcase, snakecase
 from investing import conf, download, InvestingLogging
@@ -81,6 +82,7 @@ class Launcher(InvestingLogging):
         with open(portfolio, 'r') as f:
             tickers = [l.strip() for l in f.read().split('\n') if l != '']
         self.logger.info('Found {} tickers to check prices for'.format(len(tickers)))
+        self.logger.info('Sleeping for 12 seconds between API calls (AlphaVantage free tier limitation)')
         for t in tickers:
             path = os.path.join(conf['paths']['save'], '{}.pkl'.format(t.lower()))
             if os.path.exists(path):
@@ -100,6 +102,7 @@ class Launcher(InvestingLogging):
                     continue
                 pickle.dump(ts, open(path, 'wb'))
                 self.logger.info('{} not found locally, downloading last 20 years'.format(t.upper()))
+            sleep(12)
 
     def monitor_portfolios(self):
         """Check holdings of major investment firms such as Berkshire Hathaway"""

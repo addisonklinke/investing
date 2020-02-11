@@ -105,11 +105,11 @@ class Launcher(InvestingLogging):
         """Check holdings of major investment firms such as Berkshire Hathaway"""
         held_tickers = []
         for ticker, investor in conf['following'].items():
+            self.logger.info(f'Downloading holdings for {ticker}')
             held_tickers += download.holdings(ticker)
         unique = set(held_tickers)
         with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'w') as f:
-            for ticker in unique:
-                f.write('{}\n'.format(ticker))
+            f.write('\n'.join(unique))
 
 
 if __name__ == '__main__':

@@ -13,7 +13,10 @@ def holdings(ticker):
     :return [str] held_tickers: Tickers of company holdings.
     """
     r = requests.get(endpoints['dataroma'], {'m': ticker})
-    tables = pd.read_html(r.content)
+    try:
+        tables = pd.read_html(r.content)
+    except ValueError:
+        raise RuntimeError(f'No tables found for {ticker}, download.holdings() scraper may need to be updated')
     holdings = tables[0]
     held_tickers = [s.split('-')[0].strip() for s in holdings.Stock]
     return held_tickers

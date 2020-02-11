@@ -12,7 +12,7 @@ def holdings(ticker):
     :param str ticker: Company ticker (case insensitive).
     :return [str] held_tickers: Tickers of company holdings.
     """
-    r = requests.get(endpoints['dataroma'], {'m': ticker})
+    r = requests.get(endpoints['dataroma'], {'m': ticker}, headers={"User-Agent": "XY"})
     try:
         tables = pd.read_html(r.content)
     except ValueError:

@@ -1,8 +1,8 @@
 import json
 import os
-from warnings import warn
 import pandas as pd
 import requests
+from warnings import warn
 from . import keys, endpoints
 
 
@@ -58,10 +58,12 @@ def timeseries(ticker, length='compact'):
             'symbol': ticker.upper(),
             'outputsize': length,
             'apikey': keys['alpha-vantage']})
-    data = json.loads(r.content)
+    if not r.ok:
+        raise RuntimeError(f'AlphaVantage API bad status code {r.status_code}')
     try:
+        data = json.loads(r.content)
         ts = {k: float(v['4. close']) for k, v in data['Time Series (Daily)'].items()}
     except KeyError:
-        warn('Invalid stock ticker {}'.format(ticker))
+        warn(f'Error retrieving ticker {ticker}')
         ts = {}
     return ts

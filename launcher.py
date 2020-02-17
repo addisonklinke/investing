@@ -99,9 +99,10 @@ class Launcher(InvestingLogging):
                 self.logger.warning('No data found for {}'.format(t.upper()))
                 continue
             new = pd.DataFrame.from_dict(ts, orient='index', columns=['price'])
+            new['date'] = new.index
             if existing is not None:
                 combined = pd.concat([new, existing])
-                combined = combined[~combined.index.duplicated()]
+                combined = combined[~combined.date.duplicated()]
             else:
                 combined = new
             combined.to_csv(path, index=False)

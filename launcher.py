@@ -6,6 +6,7 @@ import re
 import sys
 from time import sleep
 import git
+import pandas as pd
 from stringcase import camelcase, capitalcase, snakecase
 from investing import conf, download, InvestingLogging
 
@@ -83,25 +84,27 @@ class Launcher(InvestingLogging):
             tickers = [l.strip() for l in f.read().split('\n') if l != '']
         self.logger.info('Found {} tickers to check prices for'.format(len(tickers)))
         self.logger.info('Sleeping for 12 seconds between API calls (AlphaVantage free tier limitation)')
-        for t in tickers:
-            path = os.path.join(conf['paths']['save'], '{}.pkl'.format(t.lower()))
+        for i, t in enumerate(tickers):
+            path = os.path.join(conf['paths']['save'], '{}.csv'.format(t.lower()))
             if os.path.exists(path):
-                current = pickle.load(open(path, 'rb'))
-                ts = download.timeseries(t, 'compact')
-                if len(ts) == 0:
-                    self.logger.warning('No data found for {}'.format(t.upper()))
-                    continue
-                new = {k: v for k, v in ts.items() if k > max(current.keys())}
-                current.update(new)
-                pickle.dump(current, open(path, 'wb'))
-                self.logger.info('{} data exists locally, appending latest'.format(t.upper()))
+                length = 'compact'
+                existing = pd.read_csv(path)
             else:
-                ts = download.timeseries(t, 'full')
-                if len(ts) == 0:
-                    self.logger.warning('No data found for {}'.format(t.upper()))
-                    continue
-                pickle.dump(ts, open(path, 'wb'))
-                self.logger.info('{} not found locally, downloading last 20 years'.format(t.upper()))
+                length = 'full'
+                existing = None
+            ts = download.timeseries(t, length)
+            if len(ts) > 0:
+                self.logger.info(f'Downloaded {i + 1}/{len(tickers)}: {t.upper()}')
+            else:
+                self.logger.warning('No data found for {}'.format(t.upper()))
+                continue
+            new = pd.DataFrame.from_dict(ts, orient='index', columns=['price'])
+            if existing is not None:
+                combined = pd.concat([new, existing])
+                combined = combined[~combined.index.duplicated()]
+            else:
+                combined = new
+            combined.to_csv(path, index=False)
             sleep(12)
 
     def monitor_portfolios(self):

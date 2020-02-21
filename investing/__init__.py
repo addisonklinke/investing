@@ -21,9 +21,6 @@ else:
     conf = defaults
 
 # Details for APIs used in this package
-keys = {
-    'alpha-vantage': '26FXSXCVGD0QZZ3M',
-    'stock-news': 'uwo11fnch2fuqi5z2nle6aiw9qtt8nmaokixvynk'}
 endpoints = {
     'alpha-vantage': 'https://www.alphavantage.co/query',
     'dataroma': 'https://dataroma.com/m/holdings.php',

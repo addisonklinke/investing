@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import requests
 from warnings import warn
-from . import keys, endpoints
+from . import conf, endpoints
 
 
 def holdings(ticker):
@@ -38,7 +38,7 @@ def news(ticker=None, items=50):
     else:
         url = os.path.join(url, 'cateogry')
         params = {'section': 'alltickers'}
-    params.update({'items': items, 'token': keys['stock-news']})
+    params.update({'items': items, 'token': conf['keys']['stock-news']})
     r = requests.get(url, params)
     articles = json.loads(r.content)
     return articles
@@ -57,7 +57,7 @@ def timeseries(ticker, length='compact'):
             'function': 'TIME_SERIES_DAILY',
             'symbol': ticker.upper(),
             'outputsize': length,
-            'apikey': keys['alpha-vantage']})
+            'apikey': conf['keys']['alpha-vantage']})
     if not r.ok:
         raise RuntimeError(f'AlphaVantage API bad status code {r.status_code}')
     try:

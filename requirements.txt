@@ -2,6 +2,7 @@ beautifulsoup4>=4.7.1
 gitpython>=2.1.11s
 html5lib>=1.0.1
 lxml>=4.3.3
+numpy>=1.18.1
 pandas>=0.24.2
 requests>=2.21.0
 stringcase>=1.2.0

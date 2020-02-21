@@ -1,22 +1,21 @@
-from configparser import ConfigParser
 import logging
 from logging.handlers import RotatingFileHandler
 import os
 from pickle import load
 import re
+import yaml
 
 # Package metadata
 __version__ = '0.1.0'
 ticker_to_name = load(open('./data/ticker_to_name.pkl', 'rb'))
 
 # Load config files and override defaults with user values
-defaults = ConfigParser()
-defaults.read('./config/investing.conf.defaults')
-defaults = {s: dict(defaults.items(s)) for s in defaults.sections()}
-if os.path.exists('./config/investing.conf'):
-    user = ConfigParser()
-    user.read('./config/investing.conf')
-    user = {s: dict(user.items(s)) for s in user.sections()}
+with open('./config/investing.defaults.yaml', 'r') as stream:
+    defaults = yaml.load(stream, Loader=yaml.FullLoader)
+user_path = os.path.realpath('./config/investing.yaml')
+if os.path.exists(user_path):
+    with open(user_path, 'r') as stream:
+        user = yaml.load(stream, Loader=yaml.FullLoader)
     conf = {**defaults, **user}
 else:
     conf = defaults

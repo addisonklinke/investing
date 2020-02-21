@@ -8,6 +8,7 @@ from time import sleep
 import git
 import pandas as pd
 from stringcase import camelcase, capitalcase, snakecase
+import yaml
 from investing import conf, download, InvestingLogging
 
 
@@ -117,6 +118,11 @@ class Launcher(InvestingLogging):
         unique = set(held_tickers)
         with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'w') as f:
             f.write('\n'.join(unique))
+
+    def show_config(self):
+        """Print active configuration values to console for confirmation"""
+        stream = yaml.dump(conf)
+        print(stream.replace('\n-', '\n -'))
 
 
 if __name__ == '__main__':

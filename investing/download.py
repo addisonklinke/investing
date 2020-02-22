@@ -22,23 +22,29 @@ def holdings(ticker):
     return held_tickers
 
 
-def news(ticker=None, items=50):
+def news(ticker=None):
     """Gather news articles for general market or a specific ticker.
 
     :param str ticker: Defaults to ``None`` for general market news.
-    :param int items: Number of articles to return (max allowed for free
-        subscription is 50).
-    :return dict articles: JSON formatted news articles.
+    :return [dict] articles: List of JSON formatted news articles where each
+        item includes the following keys
+            * category (str)
+            * datetime (int)
+            * headline (str)
+            * id (int)
+            * image (str)
+            * related (str)
+            * source (str)
+            * summary (str)
+            * url (str)
     """
-    if items > 50:
-        warn('More than 50 items is not supported by free tier')
-    url = endpoints['stock-news']
-    if ticker is not None:
-        params = {'tickers': ticker}
+    url = endpoints['finnhub']['news']
+    if ticker is None:
+        params = {'category': 'general'}
     else:
-        url = os.path.join(url, 'cateogry')
-        params = {'section': 'alltickers'}
-    params.update({'items': items, 'token': conf['keys']['stock-news']})
+        url = os.path.join(url, ticker.upper())
+        params = {}
+    params.update({'token': conf['keys']['finnhub']})
     r = requests.get(url, params)
     articles = json.loads(r.content)
     return articles

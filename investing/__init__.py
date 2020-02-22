@@ -24,7 +24,9 @@ else:
 endpoints = {
     'alpha-vantage': 'https://www.alphavantage.co/query',
     'dataroma': 'https://dataroma.com/m/holdings.php',
-    'stock-news': 'https://stocknewsapi.com/api/v1'}
+    'finnhub': {
+        'sentiment': 'https://finnhub.io/api/v1/news-sentiment',
+        'news': 'https://finnhub.io/api/v1/news'}}
 
 
 class InvestingLogging:

@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import pickle
 import re
 import sys
 from time import sleep
@@ -10,6 +9,7 @@ import pandas as pd
 from stringcase import camelcase, capitalcase, snakecase
 import yaml
 from investing import conf, download, InvestingLogging
+from investing.data import Ticker
 
 
 class Launcher(InvestingLogging):
@@ -38,7 +38,7 @@ class Launcher(InvestingLogging):
             self.save = conf['paths']['save']
         self.branch = branch
         self.workflows = [capitalcase(camelcase(item)) for item in dir(self)
-                          if callable(getattr(self, item)) and not item.startswith('__')]
+                          if callable(getattr(self, item)) and not item.startswith('_')]
 
     def __call__(self):
         """Checkout requested branch and run the desired workflow."""
@@ -75,14 +75,24 @@ class Launcher(InvestingLogging):
                 repo.git.stash('pop')
         self.logger.info('Completed the {} workflow'.format(self.workflow))
 
-    def daily_tickers(self):
-        """Download new time series data for followed tickers"""
+    def _get_portfolio(self):
         portfolio = os.path.join(conf['paths']['save'], 'portfolios.txt')
         if not os.path.exists(portfolio):
             print(f'Portfolio list not found at {portfolio}, please run MonitorPortfolios workflow first')
-            return
+            return []
         with open(portfolio, 'r') as f:
             tickers = [l.strip() for l in f.read().split('\n') if l != '']
+        return tickers
+
+    def compare_performance(self):
+        """Generate plain text or PDF formatted report of stock performance"""
+        raise NotImplementedError
+
+    def daily_tickers(self):
+        """Download new time series data for followed tickers"""
+        tickers = self._get_portfolio()
+        if len(tickers) == 0:
+            return
         self.logger.info('Found {} tickers to check prices for'.format(len(tickers)))
         self.logger.info('Sleeping for 12 seconds between API calls (AlphaVantage free tier limitation)')
         for i, t in enumerate(tickers):

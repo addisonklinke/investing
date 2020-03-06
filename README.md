@@ -13,7 +13,7 @@ Addison Klinke
 ## Usage
 
 The launcher script provides the primary interface for running different workflows. 
-To familiarize yourself with the available options, run `python launcher.py --list`
+To familiarize yourself with the available options, run `python launcher.py -h`
 
 ## Configuration
 

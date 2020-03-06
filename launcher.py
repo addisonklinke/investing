@@ -1,24 +1,49 @@
 import argparse
 import logging
 import os
-import re
 import sys
 from time import sleep
-import git
 import pandas as pd
-from stringcase import camelcase, capitalcase, snakecase
 import yaml
 from investing import conf, download, InvestingLogging
 from investing.data import Ticker
+
+
+class SubCommandDefaults(argparse.ArgumentDefaultsHelpFormatter):
+    """Corrected _max_action_length for the indenting of subactions
+
+    This is a known bug (https://bugs.python.org/issue25297) in Python's argparse
+    with a patch solution provided from https://stackoverflow.com/a/32891625/7446465
+    """
+    def add_argument(self, action):
+        if action.help is not argparse.SUPPRESS:
+
+            # Find all invocations
+            get_invocation = self._format_action_invocation
+            invocations = [get_invocation(action)]
+            current_indent = self._current_indent
+            for subaction in self._iter_indented_subactions(action):
+                # compensate for the indent that will be added
+                indent_chg = self._current_indent - current_indent
+                added_indent = 'x'*indent_chg
+                invocations.append(added_indent+get_invocation(subaction))
+
+            # Update the maximum item length
+            invocation_length = max([len(s) for s in invocations])
+            action_length = invocation_length + self._current_indent
+            self._action_max_length = max(self._action_max_length, action_length)
+
+            # Add the item to the list
+            self._add_item(self._format_action, [action])
 
 
 class Launcher(InvestingLogging):
     """Define and run investing workflows.
 
     Each method should define a workflow (i.e. a combination of tasks using
-    the other submodules in this package). The __call__ method allows the
-    workflows to be easily accessed from the command line via this module's
-    __main__ method.
+    the other submodules in this package). The main parser allows the
+    workflows to be easily accessed from the command line. Workflow specific
+    arguments can be added via the ``subparsers`` dict
 
     :param str workflow: Camel cased name of method to run.
     :param bool foreground: Whether or not to log messsages to stdout
@@ -26,59 +51,47 @@ class Launcher(InvestingLogging):
     :param str branch: Name of git branch to use when running.
     """
 
-    def __init__(self, workflow, foreground=False, save=None, branch='master'):
+    def __init__(self):
         super(Launcher, self).__init__()
-        if foreground:
+
+        # Add subparsers to top-level parser for each workflow method
+        workflows = [item for item in dir(self) if callable(getattr(self, item)) and not item.startswith('_')]
+        parser = argparse.ArgumentParser(
+            formatter_class=lambda prog: SubCommandDefaults(prog, width=120, max_help_position=50))
+        parser.add_argument('-f', '--foreground', action='store_true', help='print logs to stdout in addition to file')
+        manager = parser.add_subparsers(dest='workflow', metavar='workflow')
+        subparsers = {}
+        for w in workflows:
+            doc = getattr(self, w).__doc__
+            subparsers.update({w: manager.add_parser(w, description=doc, help=doc)})
+
+        # Add workflow-specific args to each subparser
+        subparsers['compare_performance'].add_argument('format', choices=['pdf', 'console'], help='output for report')
+        subparsers['compare_performance'].add_argument('tickers', type=str, help='comma separated ticker symbols')
+        args = parser.parse_args()
+        if args.workflow is None:
+            print('workflow is required')
+            sys.exit(1)
+
+        # Setup logging
+        if args.foreground:
             stdout = logging.StreamHandler(stream=sys.stdout)
             stdout.setFormatter(self.formatter)
             self.logger.addHandler(stdout)
-        self.workflow = workflow
-        self.save = save
-        if self.save == 'None':
-            self.save = conf['paths']['save']
-        self.branch = branch
-        self.workflows = [capitalcase(camelcase(item)) for item in dir(self)
-                          if callable(getattr(self, item)) and not item.startswith('_')]
 
-    def __call__(self):
-        """Checkout requested branch and run the desired workflow."""
-        if self.workflow not in self.workflows:
-            print('Expected workflow to be one of {}, but received \'{}\''.format(
-                self.workflows, self.workflow))
-            sys.exit(1)
-
-        self.logger.info('Running the {} workflow on {} branch'.format(self.workflow, self.branch))
-        load_stash = False
-        repo = git.Repo('.')
-        repo.git.config('--global', 'user.email', 'agk38@case.edu')
-        repo.git.config('--global', 'user.name', 'Addison Klinke')
-        branches = repo.git.branch().split('\n')
-        original = re.sub('\*\s', '', branches[[i for i, b in enumerate(branches) if b.startswith('*')][0]])
-        if original != self.branch:
-            if repo.is_dirty():
-                self.logger.info('Stashing local changes on branch {}'.format(original))
-                repo.git.stash('push', '-m', 'Created by investing.workflows.Launcher')
-                load_stash = True
-            self.logger.info('Checking out {} branch'.format(self.branch))
-            repo.git.checkout(self.branch)
-
-        method = self.__getattribute__(snakecase(self.workflow))
+        # Run workflow
+        self.logger.info(f'Running the {args.workflow} workflow')
         try:
-            method()
+            getattr(self, args.workflow)()
         except Exception:
-            self.logger.exception('Uncaught exception in {} workflow'.format(self.workflow))
-
-        if original != self.branch:
-            self.logger.info('Reverting repository to prior state')
-            repo.git.checkout(original)
-            if load_stash:
-                repo.git.stash('pop')
-        self.logger.info('Completed the {} workflow'.format(self.workflow))
+            self.logger.exception(f'Uncaught exception in {args.workflow} workflow')
+        self.logger.info(f'Completed the {args.workflow} workflow')
 
     def _get_portfolio(self):
+        """Helper function to load tickers defined in user's portfolio"""
         portfolio = os.path.join(conf['paths']['save'], 'portfolios.txt')
         if not os.path.exists(portfolio):
-            print(f'Portfolio list not found at {portfolio}, please run MonitorPortfolios workflow first')
+            print(f'Portfolio list not found at {portfolio}, please run monitor_portfolios workflow first')
             return []
         with open(portfolio, 'r') as f:
             tickers = [l.strip() for l in f.read().split('\n') if l != '']
@@ -137,24 +150,4 @@ class Launcher(InvestingLogging):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(
-        description='Command line interface for other classes in the investing package',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('workflow', type=str, nargs='?', default='None', help='name of workflow to run')
-    parser.add_argument('-b', '--branch', type=str, default='master', help='git branch to run the workflow')
-    parser.add_argument('-f', '--foreground', action='store_true', help='print logs to stdout in addition to file')
-    parser.add_argument('-l', '--list', action='store_true', help='display available workflows and descriptions')
-    parser.add_argument('-s', '--save', type=str, default=None, help='local folder to save results in')
-    args = parser.parse_args()
-
-    if args.workflow == 'None' and not args.list:
-        print('Workflow name must be supplied if --list flag is not used')
-        sys.exit(1)
-    launcher = Launcher(args.workflow, args.foreground, args.save, args.branch)
-    if args.list:
-        print('The following workflows are available')
-        for w in launcher.workflows:
-            doc = launcher.__getattribute__(snakecase(w)).__doc__
-            print('  - {}: {}'.format(w, doc))
-    else:
-        launcher()
+    Launcher()

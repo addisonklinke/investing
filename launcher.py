@@ -82,7 +82,7 @@ class Launcher(InvestingLogging):
         # Run workflow
         self.logger.info(f'Running the {args.workflow} workflow')
         try:
-            getattr(self, args.workflow)()
+            getattr(self, args.workflow)(args)
         except Exception:
             self.logger.exception(f'Uncaught exception in {args.workflow} workflow')
         self.logger.info(f'Completed the {args.workflow} workflow')
@@ -97,11 +97,11 @@ class Launcher(InvestingLogging):
             tickers = [l.strip() for l in f.read().split('\n') if l != '']
         return tickers
 
-    def compare_performance(self):
+    def compare_performance(self, args):
         """Generate plain text or PDF formatted report of stock performance"""
         raise NotImplementedError
 
-    def daily_tickers(self):
+    def daily_tickers(self, args):
         """Download new time series data for followed tickers"""
         tickers = self._get_portfolio()
         if len(tickers) == 0:
@@ -132,7 +132,7 @@ class Launcher(InvestingLogging):
             combined.to_csv(path, index=False)
             sleep(12)
 
-    def monitor_portfolios(self):
+    def monitor_portfolios(self, args):
         """Check holdings of major investment firms such as Berkshire Hathaway"""
         held_tickers = []
         for ticker, investor in conf['following'].items():
@@ -142,7 +142,7 @@ class Launcher(InvestingLogging):
         with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'w') as f:
             f.write('\n'.join(unique))
 
-    def show_config(self):
+    def show_config(self, args):
         """Print active configuration values to console for confirmation"""
         stream = yaml.dump(conf)
         print(stream.replace('\n-', '\n -'))

@@ -7,7 +7,7 @@ import yaml
 
 # Package metadata
 __version__ = '0.1.0'
-ticker_to_name = load(open('./data/ticker_to_name.pkl', 'rb'))
+ticker2name = load(open('./data/ticker_to_name.pkl', 'rb'))
 
 # Load config files and override defaults with user values
 with open('./config/investing.defaults.yaml', 'r') as stream:

@@ -2,7 +2,7 @@ from datetime import date, datetime
 import os
 import numpy as np
 import pandas as pd
-from . import conf
+from . import conf, ticker2name
 from .utils import parse_period
 
 
@@ -13,6 +13,7 @@ class Ticker:
     """
 
     def __init__(self, ticker):
+        self.ticker = ticker.upper()
         csv_path = os.path.join(conf['paths']['save'], f'{ticker.lower()}.csv')
         if isinstance(ticker, str) and os.path.isfile(csv_path):
             self.data = pd.read_csv(csv_path, parse_dates=['date'])
@@ -24,6 +25,10 @@ class Ticker:
         """Shared between constructor methods to parse date column and add as index"""
         self.data.sort_values('date', inplace=True)
         self.data.set_index(pd.DatetimeIndex(self.data.date), inplace=True)
+
+    @property
+    def name(self):
+        return ticker2name.get(self.ticker.upper(), 'Unknown')
 
     def nearest(self, target_date):
         """Determine closest available business date to the target

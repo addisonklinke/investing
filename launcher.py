@@ -8,7 +8,7 @@ from prettytable import PrettyTable
 import yaml
 from investing import conf, download, InvestingLogging
 from investing.data import Ticker
-from investing.utils import SubCommandDefaults
+from investing.utils import ptable_to_csv, SubCommandDefaults
 
 
 class Launcher(InvestingLogging):
@@ -45,8 +45,8 @@ class Launcher(InvestingLogging):
 
         # Add workflow-specific args to each subparser
         comp_perf = subparsers['compare_performance']
-        comp_perf.add_argument('format', choices=['pdf', 'console'], help='output report format')
         comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols')
+        comp_perf.add_argument('format', nargs='?', choices=['pdf', 'csv'], help='optional output report format')
         comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
         args = parser.parse_args()
         if args.workflow is None:
@@ -115,6 +115,7 @@ class Launcher(InvestingLogging):
         def format_percent(p, decimals=2):
             return f'{p * 100:.{decimals}f}%'
 
+        # Setup data sources
         tickers = [t.strip() for t in args.tickers.split(',')]
         self.logger.info(f'Received {len(tickers)} symbols to compare performance of')
         if args.local_only:
@@ -122,6 +123,8 @@ class Launcher(InvestingLogging):
         else:
             self.logger.info('Refreshing local data from Alpha Vantage')
             self._refresh_tickers(tickers)
+
+        # Calculate statistics
         comparison = PrettyTable()
         comparison.field_names = [
             'Ticker', 'Name', '1-Year Rolling', '3-Year Rolling', '5-Year Rolling', '10-Year Rolling']
@@ -134,7 +137,14 @@ class Launcher(InvestingLogging):
                 format_percent(ticker.rolling('3-year')),
                 format_percent(ticker.rolling('5-year')),
                 format_percent(ticker.rolling('10-year'))])
+
+        # Output to requested format
         print(comparison)
+        if args.format == 'csv':
+            self.logger.info('Saving results to comparison.csv')
+            ptable_to_csv(comparison, 'comparison.csv')
+        elif args.format == 'pdf':
+            raise NotImplementedError('PDF report format is not yet supported')
 
     def daily_tickers(self, args):
         """Download new time series data for followed tickers"""

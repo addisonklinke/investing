@@ -33,6 +33,29 @@ def parse_period(period):
     return days
 
 
+def ptable_to_csv(table, filename, headers=True):
+    """Save PrettyTable results to a CSV file.
+
+    Adapted from @AdamSmith https://stackoverflow.com/questions/32128226
+
+    :param PrettyTable table: Table object to get data from.
+    :param str filename: Filepath for the output CSV.
+    :param bool headers: Whether to include the header row in the CSV.
+    :return: None
+    """
+    raw = table.get_string()
+    data = [tuple(filter(None, map(str.strip, splitline)))
+            for line in raw.splitlines()
+            for splitline in [str(line).split('|')] if len(splitline) > 1]
+    if hasattr(table, 'title') and table.title is not None:
+        data = data[1:]
+    if not headers:
+        data = data[1:]
+    with open(filename, 'w') as f:
+        for d in data:
+            f.write('{}\n'.format(','.join(d)))
+
+
 class SubCommandDefaults(argparse.ArgumentDefaultsHelpFormatter):
     """Corrected _max_action_length for the indenting of subactions
 

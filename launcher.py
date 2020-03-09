@@ -63,9 +63,9 @@ class Launcher(InvestingLogging):
         self.logger.info(f'Running the {args.workflow} workflow')
         try:
             getattr(self, args.workflow)(args)
+            self.logger.info(f'Completed the {args.workflow} workflow')
         except Exception:
             self.logger.exception(f'Uncaught exception in {args.workflow} workflow')
-        self.logger.info(f'Completed the {args.workflow} workflow')
 
     def _get_portfolio(self):
         """Helper function to load tickers defined in user's portfolio"""

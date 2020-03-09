@@ -4,6 +4,7 @@ import os
 import sys
 from time import sleep
 import pandas as pd
+from prettytable import PrettyTable
 import yaml
 from investing import conf, download, InvestingLogging
 from investing.data import Ticker
@@ -51,6 +52,10 @@ class Launcher(InvestingLogging):
     :param str branch: Name of git branch to use when running.
     """
 
+    # TODO commands to add
+    #     Search/list existing local tickers
+    #     Init config values (i.e. write API keys to YAML)
+
     def __init__(self):
         super(Launcher, self).__init__()
 
@@ -66,8 +71,10 @@ class Launcher(InvestingLogging):
             subparsers.update({w: manager.add_parser(w, description=doc, help=doc)})
 
         # Add workflow-specific args to each subparser
-        subparsers['compare_performance'].add_argument('format', choices=['pdf', 'console'], help='output for report')
-        subparsers['compare_performance'].add_argument('tickers', type=str, help='comma separated ticker symbols')
+        comp_perf = subparsers['compare_performance']
+        comp_perf.add_argument('format', choices=['pdf', 'console'], help='output report format')
+        comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols')
+        comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
         args = parser.parse_args()
         if args.workflow is None:
             print('workflow is required')
@@ -97,30 +104,27 @@ class Launcher(InvestingLogging):
             tickers = [l.strip() for l in f.read().split('\n') if l != '']
         return tickers
 
-    def compare_performance(self, args):
-        """Generate plain text or PDF formatted report of stock performance"""
-        raise NotImplementedError
+    def _refresh_tickers(self, tickers):
+        """Helper function to get most recent ticker data
 
-    def daily_tickers(self, args):
-        """Download new time series data for followed tickers"""
-        tickers = self._get_portfolio()
-        if len(tickers) == 0:
-            return
-        self.logger.info('Found {} tickers to check prices for'.format(len(tickers)))
+        :param [str] tickers: Stock ticker symbols (case-insensitive)
+        :return: None
+        """
         self.logger.info('Sleeping for 12 seconds between API calls (AlphaVantage free tier limitation)')
         for i, t in enumerate(tickers):
             path = os.path.join(conf['paths']['save'], '{}.csv'.format(t.lower()))
             if os.path.exists(path):
                 length = 'compact'
                 existing = pd.read_csv(path)
+                # TODO check the latest timestamp and skip API call if up-to-date
             else:
                 length = 'full'
                 existing = None
             ts = download.timeseries(t, length)
             if len(ts) > 0:
-                self.logger.info(f'Downloaded {i + 1}/{len(tickers)}: {t.upper()}')
+                self.logger.info(f'Downloaded {i + 1}/{len(tickers)}: {t.upper()} ({length})')
             else:
-                self.logger.warning('No data found for {}'.format(t.upper()))
+                self.logger.warning(f'No data found for {t.upper()}')
                 continue
             new = pd.DataFrame.from_dict(ts, orient='index', columns=['price'])
             new['date'] = new.index
@@ -131,6 +135,41 @@ class Launcher(InvestingLogging):
                 combined = new
             combined.to_csv(path, index=False)
             sleep(12)
+
+    def compare_performance(self, args):
+        """Generate plain text or PDF formatted report of stock performance"""
+
+        def format_percent(p, decimals=2):
+            return f'{p * 100:.{decimals}f}%'
+
+        tickers = [t.strip() for t in args.tickers.split(',')]
+        self.logger.info(f'Received {len(tickers)} symbols to compare performance of')
+        if args.local_only:
+            self.logger.info('Using most recent local data')
+        else:
+            self.logger.info('Refreshing local data from Alpha Vantage')
+            self._refresh_tickers(tickers)
+        comparison = PrettyTable()
+        comparison.field_names = [
+            'Ticker', 'Name', '1-Year Rolling', '3-Year Rolling', '5-Year Rolling', '10-Year Rolling']
+        for t in tickers:
+            ticker = Ticker(t)
+            comparison.add_row([
+                t.upper(),
+                ticker.name,
+                format_percent(ticker.rolling('1-year')),
+                format_percent(ticker.rolling('3-year')),
+                format_percent(ticker.rolling('5-year')),
+                format_percent(ticker.rolling('10-year'))])
+        print(comparison)
+
+    def daily_tickers(self, args):
+        """Download new time series data for followed tickers"""
+        tickers = self._get_portfolio()
+        if len(tickers) == 0:
+            return
+        self.logger.info(f'Found {len(tickers)} tickers to check prices for')
+        self._refresh_tickers(tickers)
 
     def monitor_portfolios(self, args):
         """Check holdings of major investment firms such as Berkshire Hathaway"""

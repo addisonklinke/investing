@@ -2,7 +2,8 @@ from datetime import date, datetime
 import os
 import numpy as np
 import pandas as pd
-from . import conf, ticker2name
+from . import conf
+from .mappings import ticker2name
 from .utils import parse_period
 
 

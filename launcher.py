@@ -8,6 +8,7 @@ from prettytable import PrettyTable
 import yaml
 from investing import conf, download, InvestingLogging
 from investing.data import Ticker
+from investing.mappings import ticker2name
 from investing.utils import ptable_to_csv, SubCommandDefaults
 
 
@@ -30,6 +31,7 @@ class Launcher(InvestingLogging):
     #     Init config values (i.e. write API keys to YAML)
     #     Risk analysis: tickers + holding period combination (weights optional)
     # TODO alternate constructor for non-CLI use
+    # TODO longer method docstrings for Sphinx, but only first line in argparse
 
     def __init__(self):
         super(Launcher, self).__init__()
@@ -50,6 +52,7 @@ class Launcher(InvestingLogging):
         comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols')
         comp_perf.add_argument('format', nargs='?', choices=['pdf', 'csv'], help='optional output report format')
         comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
+        subparsers['search'].add_argument('ticker', type=str, help='symbol to search for (case insensitive)')
         args = parser.parse_args()
         if args.workflow is None:
             print('workflow is required')
@@ -162,10 +165,28 @@ class Launcher(InvestingLogging):
         with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'w') as f:
             f.write('\n'.join(unique))
 
+    def search(self, args):
+        """Check if ticker data exists locally"""
+        tick_up = args.ticker.upper()
+        tick_low = args.ticker.lower()
+        csv_path = os.path.join(conf['paths']['save'], f'{tick_low}.csv')
+        name = ticker2name.get(tick_up, 'Unknown')
+        if os.path.exists(csv_path):
+            status = 'found'
+        else:
+            status = 'missing'
+        msg = f'{status.capitalize()} local data for {tick_up}'
+        if name == 'Unknown':
+            msg += ' - name not in mappings.ticker2name, please submit pull request'
+        else:
+            msg += f' ({name})'
+        print(msg)
+        return status == 'found'
+
     def show_config(self, args):
         """Print active configuration values to console for confirmation"""
         stream = yaml.dump(conf)
-        print(stream.replace('\n-', '\n -'))
+        print(stream.replace('\n-', '\n  -'))
 
 
 if __name__ == '__main__':

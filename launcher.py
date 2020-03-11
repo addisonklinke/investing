@@ -9,7 +9,7 @@ import yaml
 from investing import conf, download, InvestingLogging
 from investing.data import Ticker
 from investing.mappings import ticker2name
-from investing.utils import ptable_to_csv, SubCommandDefaults
+from investing.utils import is_current, ptable_to_csv, SubCommandDefaults
 
 
 class Launcher(InvestingLogging):
@@ -172,10 +172,12 @@ class Launcher(InvestingLogging):
         csv_path = os.path.join(conf['paths']['save'], f'{tick_low}.csv')
         name = ticker2name.get(tick_up, 'Unknown')
         if os.path.exists(csv_path):
-            status = 'found'
+            status = 'Found'
+            if not is_current(tick_low):
+                status += ' stale'
         else:
-            status = 'missing'
-        msg = f'{status.capitalize()} local data for {tick_up}'
+            status = 'Missing'
+        msg = f'{status} local data for {tick_up}'
         if name == 'Unknown':
             msg += ' - name not in mappings.ticker2name, please submit pull request'
         else:

@@ -27,6 +27,24 @@ class Ticker:
         self.data.sort_values('date', inplace=True)
         self.data.set_index(pd.DatetimeIndex(self.data.date), inplace=True)
 
+    def metric(self, metric_name):
+        """Parse metric names and dispatch to appropriate method
+
+        :param str metric_name: In the form ``{rolling,trailing}/period``
+        :return float: Calculated metric
+        :raises ValueError: For improperly formatted metric names
+        """
+        try:
+            metric_type, period = metric_name.split('/')
+        except ValueError:
+            raise ValueError(f'Metric {metric_name} does not match {{rolling,trailing}}/period format')
+        if metric_type == 'rolling':
+            return self.rolling(period)
+        elif metric_type == 'trailing':
+            return self.trailing(period)
+        else:
+            raise ValueError(f'Expected metric type to be rolling or trailing, but received {metric_type}')
+
     @property
     def name(self):
         return ticker2name.get(self.ticker.upper(), 'Unknown')

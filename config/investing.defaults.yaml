@@ -9,3 +9,8 @@ following:
 keys:
   alpha-vantage: abc123
   finnhub: def456
+
+metrics:
+  - rolling/3-year
+  - rolling/5-year
+  - rolling/10-year

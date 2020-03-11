@@ -28,6 +28,8 @@ class Launcher(InvestingLogging):
     # TODO commands to add
     #     Search/list existing local tickers
     #     Init config values (i.e. write API keys to YAML)
+    #     Risk analysis: tickers + holding period combination (weights optional)
+    # TODO alternate constructor for non-CLI use
 
     def __init__(self):
         super(Launcher, self).__init__()
@@ -129,17 +131,10 @@ class Launcher(InvestingLogging):
 
         # Calculate statistics
         comparison = PrettyTable()
-        comparison.field_names = [
-            'Ticker', 'Name', '1-Year Rolling', '3-Year Rolling', '5-Year Rolling', '10-Year Rolling']
+        comparison.field_names = ['Ticker', 'Name'] + [m.title() for m in conf['metrics']]
         for t in tickers:
             ticker = Ticker(t)
-            comparison.add_row([
-                t.upper(),
-                ticker.name,
-                format_percent(ticker.rolling('1-year')),
-                format_percent(ticker.rolling('3-year')),
-                format_percent(ticker.rolling('5-year')),
-                format_percent(ticker.rolling('10-year'))])
+            comparison.add_row([t.upper(), ticker.name] + [format_percent(ticker.metric(m)) for m in conf['metrics']])
 
         # Output to requested format
         print(comparison)

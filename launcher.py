@@ -103,7 +103,11 @@ class Launcher(InvestingLogging):
             else:
                 length = 'full'
                 existing = None
-            ts = download.timeseries(t, length)
+            try:
+                ts = download.timeseries(t, length)
+            except RuntimeError:
+                self.logger.exception(f'Timeseries download error, skipping {t.upper()}')
+                continue
             if len(ts) > 0:
                 self.logger.info(f'{i + 1}/{len(tickers)}: downloaded {t.upper()} ({length})')
             else:

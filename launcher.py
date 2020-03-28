@@ -1,5 +1,6 @@
 import argparse
 import logging
+import math
 import os
 import sys
 from time import sleep
@@ -127,7 +128,10 @@ class Launcher(InvestingLogging):
         """Generate plain text or PDF formatted report of stock performance"""
 
         def format_percent(p, decimals=2):
-            return f'{p * 100:.{decimals}f}%'
+            if math.isnan(p):
+                return 'NaN'
+            else:
+                return f'{p * 100:.{decimals}f}%'
 
         # Setup data sources
         tickers = [t.strip() for t in args.tickers.split(',')]

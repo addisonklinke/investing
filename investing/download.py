@@ -50,6 +50,24 @@ def news(ticker=None):
     return articles
 
 
+def sentiment(ticker):
+    """Download sentiment score of company news articles
+
+    :param str ticker: Case-insentive stock symbol
+    :return float: 0-1 rating with 1 being bullish. None if no news articles
+        were available
+    """
+    url = endpoints['finnhub']['sentiment']
+    params = {
+        'symbol': ticker,
+        'token': conf['keys']['finnhub']}
+    r = requests.get(url, params)
+    data = json.loads(r.content)
+    if not r.ok:
+        raise RuntimeError(f'Bad status code {r.status_code} from Finnhub sentiment')
+    return data['companyNewsScore']
+
+
 def timeseries(ticker, length='compact'):
     """Download stock prices from Alpha Vantage API.
 

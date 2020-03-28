@@ -95,15 +95,17 @@ class Launcher(InvestingLogging):
         for i, t in enumerate(tickers):
             path = os.path.join(conf['paths']['save'], '{}.csv'.format(t.lower()))
             if os.path.exists(path):
+                if is_current(t):
+                    self.logger.info(f'{i + 1}/{len(tickers)}: {t.upper()} already up-to-date')
+                    continue
                 length = 'compact'
                 existing = pd.read_csv(path)
-                # TODO check the latest timestamp and skip API call if up-to-date
             else:
                 length = 'full'
                 existing = None
             ts = download.timeseries(t, length)
             if len(ts) > 0:
-                self.logger.info(f'Downloaded {i + 1}/{len(tickers)}: {t.upper()} ({length})')
+                self.logger.info(f'{i + 1}/{len(tickers)}: downloaded {t.upper()} ({length})')
             else:
                 self.logger.warning(f'No data found for {t.upper()}')
                 continue

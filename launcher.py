@@ -8,7 +8,7 @@ import pandas as pd
 from prettytable import PrettyTable
 import yaml
 from investing import conf, download, InvestingLogging
-from investing.data import Ticker
+from investing.data import Portfolio, Ticker
 from investing.mappings import ticker2name
 from investing.utils import is_current, ptable_to_csv, SubCommandDefaults
 
@@ -28,9 +28,7 @@ class Launcher(InvestingLogging):
     """
 
     # TODO commands to add
-    #     Search/list existing local tickers
     #     Init config values (i.e. write API keys to YAML)
-    #     Risk analysis: tickers + holding period combination (weights optional)
     # TODO alternate constructor for non-CLI use
     # TODO longer method docstrings for Sphinx, but only first line in argparse
 
@@ -53,6 +51,12 @@ class Launcher(InvestingLogging):
         comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols')
         comp_perf.add_argument('format', nargs='?', choices=['pdf', 'csv'], help='optional output report format')
         comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
+        expected_return = subparsers['expected_return']
+        expected_return.add_argument('tickers', type=str, help='comma separated ticker symbols')
+        expected_return.add_argument('holding_periods', type=str, help='comma separated financial period keyword(s)')
+        expected_return.add_argument('weights', nargs='?', help='proportion of each ticker (assumed equal if absent)')
+        expected_return.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
+        expected_return.add_argument('-n', '--num_trials', type=int, default=1000, help='number of Monte Carlo trials')
         subparsers['search'].add_argument('ticker', type=str, help='symbol to search for (case insensitive)')
         args = parser.parse_args()
         if args.workflow is None:
@@ -75,6 +79,18 @@ class Launcher(InvestingLogging):
             if not args.foreground:
                 print(f'{msg}, rerun with -f to see details')
             self.logger.exception(msg)
+
+    def _format_percent(self, p, decimals=2):
+        """Convert decimal percentage to human-readable string
+
+        :param float p: Raw percentage
+        :param int decimals: Precision of displayed value
+        :return str: Human-readable representation
+        """
+        if math.isnan(p):
+            return 'NaN'
+        else:
+            return f'{p * 100:.{decimals}f}%'
 
     def _get_portfolio(self):
         """Helper function to load tickers defined in user's portfolio"""
@@ -125,13 +141,7 @@ class Launcher(InvestingLogging):
             sleep(12)
 
     def compare_performance(self, args):
-        """Generate plain text or PDF formatted report of stock performance"""
-
-        def format_percent(p, decimals=2):
-            if math.isnan(p):
-                return 'NaN'
-            else:
-                return f'{p * 100:.{decimals}f}%'
+        """Calculate historical performance for several stock(s)"""
 
         # Setup data sources
         tickers = [t.strip() for t in args.tickers.split(',')]
@@ -147,7 +157,8 @@ class Launcher(InvestingLogging):
         comparison.field_names = ['Ticker', 'Name'] + [m.title() for m in conf['metrics']]
         for t in tickers:
             ticker = Ticker(t)
-            comparison.add_row([t.upper(), ticker.name] + [format_percent(ticker.metric(m)) for m in conf['metrics']])
+            comparison.add_row(
+                [t.upper(), ticker.name] + [self._format_percent(ticker.metric(m)) for m in conf['metrics']])
 
         # Output to requested format
         print(comparison)
@@ -174,6 +185,34 @@ class Launcher(InvestingLogging):
         unique = set(held_tickers)
         with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'w') as f:
             f.write('\n'.join(unique))
+
+    def expected_return(self, args):
+        """Calculate joint return probability across several holdings"""
+
+        # Initialize portfolio object
+        tickers = [t for t in args.tickers.split(',')]
+        if args.weights is None:
+            weights = None
+        else:
+            weights = [float(w) for w in args.weights.split(',')]
+        portfolio = Portfolio(tickers, weights)
+        self.logger.info(f'Initialized portfolio object {portfolio}')
+
+        # Calculate returns and print results
+        returns = PrettyTable()
+        returns.field_names = ['Period', '-σ', 'Mean', '+σ', 'Data Points']
+        returns.title = portfolio.name
+        periods = [p for p in args.holding_periods.split(',')]
+        self.logger.info(f'Simulating composite returns for {periods}')
+        for p in periods:
+            return_avg, return_std, min_count = portfolio.expected_return(p, args.num_trials)
+            returns.add_row([
+                p,
+                self._format_percent(return_avg - return_std),
+                self._format_percent(return_avg),
+                self._format_percent(return_avg + return_std),
+                min_count])
+        print(returns)
 
     def search(self, args):
         """Check if ticker data exists locally"""

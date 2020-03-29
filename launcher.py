@@ -5,12 +5,15 @@ import os
 import sys
 from time import sleep
 from prettytable import PrettyTable
+import pytz
 import yaml
 from investing import conf, InvestingLogging
 from investing.data import is_current, Portfolio, Ticker, ticker_data
 from investing.download import holdings
 from investing.mappings import ticker2name
 from investing.utils import ptable_to_csv, SubCommandDefaults
+
+# TODO explicit submodule imports with "import investing.x as x"
 
 
 class Launcher(InvestingLogging):
@@ -27,9 +30,6 @@ class Launcher(InvestingLogging):
     :param str branch: Name of git branch to use when running.
     """
 
-    # TODO commands to add
-    #     Init config values (i.e. write API keys to YAML)
-    # TODO alternate constructor for non-CLI use
     # TODO longer method docstrings for Sphinx, but only first line in argparse
 
     def __init__(self):
@@ -162,6 +162,31 @@ class Launcher(InvestingLogging):
             return
         self.logger.info(f'Found {len(tickers)} tickers to check prices for')
         self._refresh_tickers(tickers)
+
+    def configure(self, args):
+        """Populate YAML fields on initial install"""
+        print('Please enter the following values to configured your investing install')
+        save_path = input('Directory to save local stock CSV data: ')
+        while not os.path.isdir(save_path):
+            save_path = input('Please enter a valid directory path: ')
+        locale = input('Your timezone (i.e. US/Mountain, US/Eastern, etc): ')
+        while locale not in pytz.all_timezones:
+            locale = input('Please enter a valid timezone or all to show list: ')
+            if locale == 'all':
+                print('\n'.join(pytz.all_timezones))
+        finnhub_key = input('Finnhub API key (see https://finnhub.io/register): ')
+        alphavantage_key = input('AlphaVantage API key (see https://www.alphavantage.co/support/#api-key): ')
+        config_data = {
+            'locale': locale,
+            'keys': {
+                'alpha-vantage': alphavantage_key,
+                'finnhub': finnhub_key},
+            'paths': {
+                'save': save_path}}
+        with open('config/investing.yaml', 'w') as stream:
+            yaml.dump(config_data, stream)
+        print('Configuration successfully written')
+        print("Please run 'python launcher.py show_config' to confirm")
 
     def monitor_portfolios(self, args):
         """Check holdings of major investment firms such as Berkshire Hathaway"""

@@ -188,6 +188,11 @@ class Launcher(InvestingLogging):
         print('Configuration successfully written')
         print("Please run 'python launcher.py show_config' to confirm")
 
+    def list(self, args):
+        """Print all locally available ticker symbols alphabetically sorted"""
+        local = [os.path.splitext(f)[0] for f in os.listdir(conf['paths']['save']) if f.endswith('.csv')]
+        print('\n'.join(sorted(local)))
+
     def monitor_portfolios(self, args):
         """Check holdings of major investment firms such as Berkshire Hathaway"""
         held_tickers = []

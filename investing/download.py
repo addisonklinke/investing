@@ -4,6 +4,7 @@ import pandas as pd
 import requests
 from warnings import warn
 from . import conf, endpoints
+from .utils import is_current
 
 
 def holdings(ticker):
@@ -66,6 +67,39 @@ def sentiment(ticker):
     if not r.ok:
         raise RuntimeError(f'Bad status code {r.status_code} from Finnhub sentiment')
     return data['companyNewsScore']
+
+
+def ticker_data(ticker):
+    """Helper function to refresh local ticker data or fetch if missing
+
+    :param str ticker: Stock ticker symbol (case-insensitive)
+    :return str status: One of the following
+        * current: No API call needed, local data is up-to-date
+        * missing: No remote data found, perhaps an incorrect ticker symbol
+        * full: No previous local data was found, downloaded full from API
+        * compact: Previous local data was refreshed with more recent API data
+    """
+    path = os.path.join(conf['paths']['save'], '{}.csv'.format(ticker.lower()))
+    if os.path.exists(path):
+        if is_current(ticker):
+            return 'current'
+        length = 'compact'
+        existing = pd.read_csv(path)
+    else:
+        length = 'full'
+        existing = None
+    ts = timeseries(ticker, length)
+    if len(ts) == 0:
+        return 'missing'
+    new = pd.DataFrame.from_dict(ts, orient='index', columns=['price'])
+    new['date'] = new.index
+    if existing is not None:
+        combined = pd.concat([new, existing])
+        combined = combined[~combined.date.duplicated()]
+    else:
+        combined = new
+    combined.to_csv(path, index=False)
+    return length
 
 
 def timeseries(ticker, length='compact'):

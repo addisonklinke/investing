@@ -9,6 +9,7 @@ from prettytable import PrettyTable
 import yaml
 from investing import conf, download, InvestingLogging
 from investing.data import Portfolio, Ticker
+from investing.download import ticker_data
 from investing.mappings import ticker2name
 from investing.utils import is_current, ptable_to_csv, SubCommandDefaults
 
@@ -110,34 +111,21 @@ class Launcher(InvestingLogging):
         """
         self.logger.info('Sleeping for 12 seconds between API calls (AlphaVantage free tier limitation)')
         for i, t in enumerate(tickers):
-            path = os.path.join(conf['paths']['save'], '{}.csv'.format(t.lower()))
-            if os.path.exists(path):
-                if is_current(t):
-                    self.logger.info(f'{i + 1}/{len(tickers)}: {t.upper()} already up-to-date')
-                    continue
-                length = 'compact'
-                existing = pd.read_csv(path)
-            else:
-                length = 'full'
-                existing = None
             try:
-                ts = download.timeseries(t, length)
+                status = ticker_data(t)
             except RuntimeError:
                 self.logger.exception(f'Timeseries download error, skipping {t.upper()}')
                 continue
-            if len(ts) > 0:
-                self.logger.info(f'{i + 1}/{len(tickers)}: downloaded {t.upper()} ({length})')
-            else:
+            if status == 'current':
+                self.logger.info(f'{i + 1}/{len(tickers)}: {t.upper()} already up-to-date')
+                continue
+            elif status in ['compact', 'full']:
+                self.logger.info(f'{i + 1}/{len(tickers)}: downloaded {t.upper()} ({status})')
+            elif status == 'missing':
                 self.logger.warning(f'No data found for {t.upper()}')
                 continue
-            new = pd.DataFrame.from_dict(ts, orient='index', columns=['price'])
-            new['date'] = new.index
-            if existing is not None:
-                combined = pd.concat([new, existing])
-                combined = combined[~combined.date.duplicated()]
             else:
-                combined = new
-            combined.to_csv(path, index=False)
+                raise ValueError(f'Unknown status string {status} from download.ticker_data()')
             sleep(12)
 
     def compare_performance(self, args):

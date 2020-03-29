@@ -1,5 +1,4 @@
 from datetime import date, datetime
-import math
 import os
 import numpy as np
 import pandas as pd
@@ -58,6 +57,14 @@ class Portfolio:
             self.weights = weights
         self.holdings = [Ticker(t) for t in tickers]
 
+    def __str__(self):
+        """Human readable naming for all holdings"""
+        return ', '.join([f'{h.ticker} ({w:.2f})' for h, w in zip(self.holdings, self.weights)])
+
+    def __repr__(self):
+        """Displayable instance name for print() function"""
+        return f'Portfolio[{str(self)}]'
+
     def expected_return(self, period, n=1000):
         """Monte-Carlo simulation of typical return and standard deviation
 
@@ -70,11 +77,16 @@ class Portfolio:
         sample_pools = [h.rolling(period, average=False) for h in self.holdings]
         missing = [len(s) == 0 for s in sample_pools]
         if any(missing):
-            too_long =', '.join([self.holdings[i].ticker for i, m in enumerate(missing) if m])
+            too_long = ', '.join([self.holdings[i].ticker for i, m in enumerate(missing) if m])
             raise RuntimeError(f'Insufficient data for {period} period for holdings {too_long}')
         individual = np.stack([s.sample(n, replace=True).values for s in sample_pools])
         composite = np.sum(individual * np.array(self.weights).reshape((-1, 1)), axis=0)
         return composite.mean(), composite.std(), min(len(s) for s in sample_pools)
+
+    @property
+    def name(self):
+        """Human readable naming for all holdings via call to internal __str__"""
+        return str(self)
 
 
 class Ticker:
@@ -91,6 +103,14 @@ class Ticker:
         else:
             raise ValueError(f'Ticker CSV not found at {csv_path}')
         self._format_csv()
+
+    def __str__(self):
+        """Full company name"""
+        return ticker2name.get(self.ticker.upper(), 'Unknown')
+
+    def __repr__(self):
+        """Displayable instance name for print() function"""
+        return f'Ticker({self.ticker})'
 
     def _format_csv(self):
         """Shared between constructor methods to parse date column and add as index"""
@@ -117,7 +137,8 @@ class Ticker:
 
     @property
     def name(self):
-        return ticker2name.get(self.ticker.upper(), 'Unknown')
+        """Full company name via call to internal __str__"""
+        return str(self)
 
     def nearest(self, target_date):
         """Determine closest available business date to the target

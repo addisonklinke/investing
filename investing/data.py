@@ -49,7 +49,7 @@ class Portfolio:
     def __init__(self, tickers, weights=None):
         if weights is None:
             self.weights = [1/len(tickers)] * len(tickers)
-        elif len(self.weights) != len(tickers):
+        elif len(weights) != len(tickers):
             raise ValueError(f'Mismatch between number of tickers ({len(tickers)}) and weights ({len(weights)})')
         elif sum(weights) != 1.0:
             raise ValueError(f'Weights must sum to 1 (got {sum(weights)} instead)')

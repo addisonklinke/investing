@@ -16,7 +16,7 @@ def is_current(ticker):
     :return bool: Whether the latest timestamp matches the last market day
     """
     latest_close = market_day('current')
-    t = Ticker(ticker)
+    t = Ticker(ticker, local_only=True)
     return latest_close <= t.data.date.max()
 
 
@@ -170,12 +170,13 @@ class Ticker:
     def __init__(self, ticker, local_only=False):
         self.ticker = ticker.upper()
         csv_path = os.path.join(conf['paths']['save'], f'{ticker.lower()}.csv')
-        if not os.path.isfile(csv_path) and not local_only:
-            status = ticker_data(ticker)
-            if status != 'full':
-                raise RuntimeError(f'Unexpected status {status} for attempted {ticker.upper()} download')
-        else:
-            raise ValueError(f'Local only ticker CSV not found at {csv_path}, try local_only=False')
+        if not os.path.isfile(csv_path):
+            if not local_only:
+                status = ticker_data(ticker)
+                if status != 'full':
+                    raise RuntimeError(f'Unexpected status {status} for attempted {ticker.upper()} download')
+            else:
+                raise ValueError(f'Local only ticker CSV not found at {csv_path}, try local_only=False')
         self.data = pd.read_csv(csv_path, parse_dates=['date'])
         self._format_csv()
 

@@ -1,4 +1,5 @@
 from datetime import date, datetime
+import math
 import os
 import numpy as np
 import pandas as pd
@@ -38,10 +39,48 @@ def parse_period(period):
     return days
 
 
-class Ticker:
-    """Manage ticker date and calculate descriptive statistics
+class Portfolio:
+    """Combination of several holdings
 
-    :param str ticker: Abbreviation for stock to load
+    :param [str] tickers: Iterable list of case-insensitive stock abbreviations
+    :param [float] weights: Percent of portfolio each stock makes up (leave as
+        ``None`` for even splits)
+    """
+
+    def __init__(self, tickers, weights=None):
+        if weights is None:
+            self.weights = [1/len(tickers)] * len(tickers)
+        elif len(self.weights) != len(tickers):
+            raise ValueError(f'Mismatch between number of tickers ({len(tickers)}) and weights ({len(weights)})')
+        elif sum(weights) != 1.0:
+            raise ValueError(f'Weights must sum to 1 (got {sum(weights)} instead)')
+        else:
+            self.weights = weights
+        self.holdings = [Ticker(t) for t in tickers]
+
+    def expected_return(self, period, n=1000):
+        """Monte-Carlo simulation of typical return and standard deviation
+
+        :param int or str period: Number of days for the return window or a
+            keyword string such as daily, monthly, yearly, 5-year, etc.
+        :param int n: Number of simulations to run
+        :return 3-tuple(float): Mean and standard deviation of return and
+            least number of data points used for an individual holding
+        """
+        sample_pools = [h.rolling(period, average=False) for h in self.holdings]
+        missing = [len(s) == 0 for s in sample_pools]
+        if any(missing):
+            too_long =', '.join([self.holdings[i].ticker for i, m in enumerate(missing) if m])
+            raise RuntimeError(f'Insufficient data for {period} period for holdings {too_long}')
+        individual = np.stack([s.sample(n, replace=True).values for s in sample_pools])
+        composite = np.sum(individual * np.array(self.weights).reshape((-1, 1)), axis=0)
+        return composite.mean(), composite.std(), min(len(s) for s in sample_pools)
+
+
+class Ticker:
+    """Manage ticker data and calculate descriptive statistics
+
+    :param str ticker: Case-insensitive stock abbreviation
     """
 
     def __init__(self, ticker):

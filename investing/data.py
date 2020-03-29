@@ -1,9 +1,47 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import os
-import numpy as np
 import pandas as pd
+import pandas_market_calendars as mcal
+import pytz
+import numpy as np
 from . import conf
+from .download import timeseries
 from .mappings import ticker2name
+
+
+def is_current(ticker):
+    """Check if ticker CSV has the most recent data
+
+    :param str ticker: Ticker symbol to check
+    :return bool: Whether the latest timestamp matches the last market day
+    """
+    latest_close = market_day('current')
+    t = Ticker(ticker)
+    return latest_close <= t.data.date.max()
+
+
+def market_day(direction):
+    """Return the closest completed and valid market day
+
+    :param str direction: One of previous, current, next
+    :return np.datetime64: Date stamp
+    """
+    nyse = mcal.get_calendar('NYSE')
+    recent = nyse.valid_days(start_date=date.today() - timedelta(days=7), end_date=date.today() + timedelta(days=1))
+    idx = -2  # Last series index is the 1 day in the future
+    current_close = nyse.schedule(start_date=recent[idx], end_date=recent[idx]).market_close[0]
+    tz = pytz.timezone(conf['locale'])
+    if current_close > datetime.now(tz):
+        idx -= 1
+    if direction == 'current':
+        stamp = recent[idx]
+    elif direction == 'previous':
+        stamp = recent[idx - 1]
+    elif direction == 'next':
+        stamp = recent[idx + 1]
+    else:
+        raise ValueError(f'Expected direction to be previous, current, or next, but received {direction}')
+    return stamp.to_numpy()
 
 
 def parse_period(period):
@@ -36,6 +74,39 @@ def parse_period(period):
     else:
         raise ValueError(f'Exepcted type int or str, but received {type(period)}')
     return days
+
+
+def ticker_data(ticker):
+    """Helper function to refresh local ticker data or fetch if missing
+
+    :param str ticker: Stock ticker symbol (case-insensitive)
+    :return str status: One of the following
+        * current: No API call needed, local data is up-to-date
+        * missing: No remote data found, perhaps an incorrect ticker symbol
+        * full: No previous local data was found, downloaded full from API
+        * compact: Previous local data was refreshed with more recent API data
+    """
+    path = os.path.join(conf['paths']['save'], '{}.csv'.format(ticker.lower()))
+    if os.path.exists(path):
+        if is_current(ticker):
+            return 'current'
+        length = 'compact'
+        existing = pd.read_csv(path)
+    else:
+        length = 'full'
+        existing = None
+    ts = timeseries(ticker, length)
+    if len(ts) == 0:
+        return 'missing'
+    new = pd.DataFrame.from_dict(ts, orient='index', columns=['price'])
+    new['date'] = new.index
+    if existing is not None:
+        combined = pd.concat([new, existing])
+        combined = combined[~combined.date.duplicated()]
+    else:
+        combined = new
+    combined.to_csv(path, index=False)
+    return length
 
 
 class Portfolio:
@@ -93,15 +164,19 @@ class Ticker:
     """Manage ticker data and calculate descriptive statistics
 
     :param str ticker: Case-insensitive stock abbreviation
+    :param bool local_only: Don't download missing data, raise ``ValueError``
     """
 
-    def __init__(self, ticker):
+    def __init__(self, ticker, local_only=False):
         self.ticker = ticker.upper()
         csv_path = os.path.join(conf['paths']['save'], f'{ticker.lower()}.csv')
-        if isinstance(ticker, str) and os.path.isfile(csv_path):
-            self.data = pd.read_csv(csv_path, parse_dates=['date'])
+        if not os.path.isfile(csv_path) and not local_only:
+            status = ticker_data(ticker)
+            if status != 'full':
+                raise RuntimeError(f'Unexpected status {status} for attempted {ticker.upper()} download')
         else:
-            raise ValueError(f'Ticker CSV not found at {csv_path}')
+            raise ValueError(f'Local only ticker CSV not found at {csv_path}, try local_only=False')
+        self.data = pd.read_csv(csv_path, parse_dates=['date'])
         self._format_csv()
 
     def __str__(self):
@@ -212,7 +287,7 @@ class Ticker:
         return (end_price - trail_price) / trail_price
 
     @classmethod
-    def from_df(self, dataframe):
+    def from_df(cls, dataframe):
         """Construct instance from pre-loaded data already in memory"""
-        self.data = dataframe
-        self._format_csv()
+        cls.data = dataframe
+        cls._format_csv()

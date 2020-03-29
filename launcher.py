@@ -4,14 +4,13 @@ import math
 import os
 import sys
 from time import sleep
-import pandas as pd
 from prettytable import PrettyTable
 import yaml
-from investing import conf, download, InvestingLogging
-from investing.data import Portfolio, Ticker
-from investing.download import ticker_data
+from investing import conf, InvestingLogging
+from investing.data import is_current, Portfolio, Ticker, ticker_data
+from investing.download import holdings
 from investing.mappings import ticker2name
-from investing.utils import is_current, ptable_to_csv, SubCommandDefaults
+from investing.utils import ptable_to_csv, SubCommandDefaults
 
 
 class Launcher(InvestingLogging):
@@ -169,7 +168,7 @@ class Launcher(InvestingLogging):
         held_tickers = []
         for ticker, investor in conf['following'].items():
             self.logger.info(f'Downloading holdings for {ticker}')
-            held_tickers += download.holdings(ticker)
+            held_tickers += holdings(ticker)
         unique = set(held_tickers)
         with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'w') as f:
             f.write('\n'.join(unique))

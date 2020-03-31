@@ -230,6 +230,8 @@ class Launcher(InvestingLogging):
                 self._format_percent(return_avg + return_std),
                 min_count])
         print(returns)
+        self.logger.info('Saving results to returns.csv')
+        ptable_to_csv(returns, 'returns.csv')
 
     def search(self, args):
         """Check if ticker data exists locally"""

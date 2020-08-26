@@ -26,3 +26,10 @@ You will need (free) accounts with the following websites to populate the API ke
 
 * [Finnhub](https://finnhub.io/register)
 * [Alpha Vantage](https://www.alphavantage.co/support/#api-key) 
+
+## Disclaimer
+
+Use at your own risk.
+Per the MIT license, this project does not provide *ANY* guarantees of proper functionality.
+Users should not make investment decisions without consulting a reliable, external source of 
+information such as a professional financial planner.

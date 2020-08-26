@@ -12,6 +12,7 @@ common financial periods and querying valid market days.
 
 from datetime import date, datetime, timedelta
 import os
+from warnings import warn
 import pandas as pd
 import pandas_market_calendars as mcal
 import pytz
@@ -262,6 +263,8 @@ class Ticker:
         if target_date in self.data.date.values:
             return target_date
         else:
+            if target_date > self.data.index.max():
+                warn('Target date exceeds max downloaded')
             idx = self.data.index.get_loc(target_date, method='nearest')
             return self.data.iloc[idx].date.to_numpy()
 

@@ -1,12 +1,16 @@
 import logging
 from logging.handlers import RotatingFileHandler
 import os
-from pickle import load
 import re
+import warnings
 import yaml
 
 # Package metadata
 __version__ = '0.1.0'
+
+# Simplify warning format to a single line
+warnings.formatwarning = lambda message, category, filename, lineno, line=None: \
+    f'{filename}:{lineno}: {category.__name__}: {message}\n'
 
 # Load config files and override defaults with user values
 with open('./config/investing.defaults.yaml', 'r') as stream:

@@ -15,33 +15,55 @@ def is_current(ticker):
     :param str ticker: Ticker symbol to check
     :return bool: Whether the latest timestamp matches the last market day
     """
-    latest_close = market_day('current')
+    latest_close = market_day('latest')
     t = Ticker(ticker, local_only=True)
     return latest_close <= t.data.date.max()
 
 
-def market_day(direction):
+def market_day(direction, reference='today', search_days=7):
     """Return the closest completed and valid market day
 
-    :param str direction: One of previous, current, next
+    If ``reference == 'today'``, the current time will be compared to the
+    market's closing time. For future or past reference dates, it is assumed
+    that the time of day referenced is after close.
+
+    :param str direction: One of previous, latest, next
+    :param str reference: Day to search relative to (yyyy-mm-dd format or
+        ``'today'`` for the current day
+    :param int search_days: Symmetrical number of days to check on either
+        side of the provided ``reference``
     :return np.datetime64: Date stamp
     """
+
+    # Load calendar and format datetime reference
     nyse = mcal.get_calendar('NYSE')
-    recent = nyse.valid_days(start_date=date.today() - timedelta(days=7), end_date=date.today() + timedelta(days=1))
-    idx = -2  # Last series index is the 1 day in the future
-    current_close = nyse.schedule(start_date=recent[idx], end_date=recent[idx]).market_close[0]
-    tz = pytz.timezone(conf['locale'])
-    if current_close > datetime.now(tz):
-        idx -= 1
-    if direction == 'current':
-        stamp = recent[idx]
-    elif direction == 'previous':
-        stamp = recent[idx - 1]
-    elif direction == 'next':
-        stamp = recent[idx + 1]
+    if reference == 'today':
+        ref_day = date.today()
     else:
-        raise ValueError(f'Expected direction to be previous, current, or next, but received {direction}')
-    return stamp.to_numpy()
+        ref_day = datetime.strptime(reference, '%Y-%m-%d').date()
+
+    # Build list of valid market days within window and determine closest index to reference
+    search_window = timedelta(days=search_days)
+    recent = nyse.valid_days(start_date=ref_day - search_window, end_date=ref_day + search_window)
+    if len(recent) == 0:
+        raise RuntimeError(f'No valid dates found within {search_days} days, try expanding window')
+    diffs = pd.DataFrame(recent - pd.Timestamp(ref_day, tz='UTC'))
+    idx = diffs[diffs <= timedelta(days=0)].idxmax()
+
+    # Check whether market has closed if latest valid date is today
+    latest_valid = recent[idx][0].to_numpy()
+    closing_time = nyse.schedule(start_date=latest_valid, end_date=latest_valid).market_close[0]
+    now = datetime.now(tz=pytz.timezone(conf['locale']))
+    if closing_time.date() == now.date() and closing_time > now:
+        idx -= 1
+
+    # Adjust returned date by requested direction
+    assert direction in ['previous', 'latest', 'next'], f'Invalid direction {direction}'
+    if direction == 'previous':
+        idx -= 1
+    elif direction == 'next':
+        idx += 1
+    return recent[idx][0].to_numpy()
 
 
 def parse_period(period):

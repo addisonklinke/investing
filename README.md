@@ -17,11 +17,10 @@ To familiarize yourself with the available options, run `python launcher.py -h`
 
 ## Configuration
 
-Default configuration values are located in the file 
-`config/investing.defaults.yaml`. To override, create a new file called 
-`config/investing.yaml` and populate it according the default template. Any 
-values from the user-created config file will take precedence over the default 
-config file at runtime. 
+Default configuration values are located in the file `config/investing.defaults.yaml`. 
+To get started, run `python launcher.py configure` and follow the prompts.
+This will populate a new file called `config/investing.yaml`. 
+Any values from the user-created config will take precedence over the default config at runtime. 
 
 You will need (free) accounts with the following websites to populate the API key fields
 

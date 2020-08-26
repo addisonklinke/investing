@@ -165,7 +165,7 @@ class Launcher(InvestingLogging):
 
     def configure(self, args):
         """Populate YAML fields on initial install"""
-        print('Please enter the following values to configured your investing install')
+        print('Please enter the following values to configure your investing install')
         save_path = input('Directory to save local stock CSV data: ')
         while not os.path.isdir(save_path):
             save_path = input('Please enter a valid directory path: ')

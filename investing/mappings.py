@@ -1,3 +1,5 @@
+"""Static mappings for common conversions"""
+
 ticker2name = {
     'A': 'Agilent Technologies',
     'AA': 'Alcoa',

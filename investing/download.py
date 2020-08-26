@@ -1,3 +1,5 @@
+"""Retrieve data from configured API endpoints"""
+
 import json
 import os
 import pandas as pd

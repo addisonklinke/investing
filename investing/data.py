@@ -1,3 +1,15 @@
+"""
+Ticker data is stored on disk at the location specified by
+``config['paths']['save']`` with two columns (price and date). Data can be
+loaded into Python and accessed via the `Ticker` class. This class has methods
+to calculate descriptive statistics such as trailing and rolling returns of
+differing time periods. Multiple `Ticker` objects can be combined into a
+`Portfolio` object with optional weighting between the holdings.
+
+The data module also contains several useful helper functions for parsing
+common financial periods and querying valid market days.
+"""
+
 from datetime import date, datetime, timedelta
 import os
 import pandas as pd

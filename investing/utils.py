@@ -1,3 +1,5 @@
+"""Utility objects that don't fit neatly into another module"""
+
 import argparse
 
 

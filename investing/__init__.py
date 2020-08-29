@@ -4,6 +4,7 @@ import os
 import re
 import warnings
 import yaml
+from .exceptions import ImproperlyConfigured
 
 # Package metadata
 __version__ = '0.2.0'
@@ -22,6 +23,21 @@ if os.path.exists(user_path):
     conf = {**defaults, **user}
 else:
     conf = defaults
+
+# Validate configuration
+if not os.path.isdir(conf['paths']['save']):
+    raise ImproperlyConfigured(f'Save directory {conf["paths"]["save"]} does not exist')
+for api, key in conf['keys'].items():
+    if key is None:
+        raise ImproperlyConfigured(f'No API key configured for {api}')
+for i, p in enumerate(conf['portfolios'], 1):
+    if 'name' not in p:
+        raise ImproperlyConfigured(f'Portfolio {i} must be named')
+    portfolio_type = p.get('type')
+    if portfolio_type not in ['follow', 'manual']:
+        raise ImproperlyConfigured(f'Unknown type {portfolio_type} for {p["name"]} portfolio')
+    if len(p.get('symbols', [])) == 0:
+        raise ImproperlyConfigured(f'Portfolio {p["name"]} has no symbols defined')
 
 # Details for APIs used in this package
 endpoints = {

@@ -4,12 +4,8 @@ import json
 import os
 import pandas as pd
 import requests
-from warnings import warn
 from . import conf, endpoints
-
-
-class APIError(RuntimeError):
-    """Raised for bad HTTP codes, missing data, unexpected format, etc"""
+from .exceptions import APIError
 
 
 def holdings(ticker):

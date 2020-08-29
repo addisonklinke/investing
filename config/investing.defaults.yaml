@@ -2,14 +2,21 @@ locale: US/Eastern
 paths:
   save: /mnt/stocks
 
-following:
-  GFT: Bill Gates
-  AQ: Guy Spier
-  BRK: Warren Buffet
+portfolios:
+  - name: Experts
+    type: follow
+    symbols:
+      - GFT
+      - BRK
+  - name: ETFs
+    type: manual
+    symbols:
+      - VTI
+      - SPY
 
 keys:
-  alpha-vantage: abc123
-  finnhub: def456
+  alpha-vantage: null
+  finnhub: null
 
 metrics:
   - rolling/3-year

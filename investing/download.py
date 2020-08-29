@@ -8,6 +8,10 @@ from warnings import warn
 from . import conf, endpoints
 
 
+class APIError(RuntimeError):
+    """Raised for bad HTTP codes, missing data, unexpected format, etc"""
+
+
 def holdings(ticker):
     """Save list of stock holdings for a particular company.
 
@@ -18,7 +22,7 @@ def holdings(ticker):
     try:
         tables = pd.read_html(r.content)
     except ValueError:
-        raise RuntimeError(f'No tables found for {ticker}, download.holdings() scraper may need to be updated')
+        raise APIError(f'No tables found for {ticker}, download.holdings() scraper may need to be updated')
     holdings = tables[0]
     held_tickers = [s.split('-')[0].strip() for s in holdings.Stock]
     return held_tickers
@@ -66,7 +70,7 @@ def sentiment(ticker):
     r = requests.get(url, params)
     data = json.loads(r.content)
     if not r.ok:
-        raise RuntimeError(f'Bad status code {r.status_code} from Finnhub sentiment')
+        raise APIError(f'Bad status code {r.status_code} from Finnhub sentiment')
     return data['companyNewsScore']
 
 
@@ -85,11 +89,10 @@ def timeseries(ticker, length='compact'):
             'outputsize': length,
             'apikey': conf['keys']['alpha-vantage']})
     if not r.ok:
-        raise RuntimeError(f'AlphaVantage API bad status code {r.status_code}')
+        raise APIError(f'AlphaVantage API bad status code {r.status_code}')
     try:
         data = json.loads(r.content)
         ts = {k: float(v['4. close']) for k, v in data['Time Series (Daily)'].items()}
     except KeyError:
-        warn(f'Error retrieving ticker {ticker}')
-        ts = {}
+        raise APIError(f'Alpha-Vantage data could not be found/loaded for ticker {ticker}')
     return ts

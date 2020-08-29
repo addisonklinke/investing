@@ -4,6 +4,6 @@ lxml>=4.3.3
 numpy>=1.18.1
 pandas>=0.24.2
 pandas-market-calendars>=1.2
-prettytable>=0.7.2
+prettytable>=0.9.2
 pyyaml>=5.3
 requests>=2.21.0

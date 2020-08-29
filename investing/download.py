@@ -75,8 +75,10 @@ def timeseries(ticker, length='compact'):
 
     :param str ticker: Uppercase stock abbreviation.
     :param str length: Either compact (last 100 days) or full (20 years).
-    :return dict ts: Timestamps as keys and closing prices as values.
+    :return pd.DataFrame df: One column for price plus ``pd.DateTimeIndex``
     """
+
+    # Check endpoint status
     r = requests.get(
         url=endpoints['alpha-vantage'],
         params={
@@ -86,9 +88,16 @@ def timeseries(ticker, length='compact'):
             'apikey': conf['keys']['alpha-vantage']})
     if not r.ok:
         raise APIError(f'AlphaVantage API bad status code {r.status_code}')
+
+    # Parse closing prices
     try:
         data = json.loads(r.content)
         ts = {k: float(v['4. close']) for k, v in data['Time Series (Daily)'].items()}
     except KeyError:
         raise APIError(f'Alpha-Vantage data could not be found/loaded for ticker {ticker}')
-    return ts
+
+    # Format into Pandas
+    dates, prices = zip(*ts.items())
+    df = pd.DataFrame({'price': prices}, index=pd.DatetimeIndex(dates))
+    df.index.name = 'date'
+    return df

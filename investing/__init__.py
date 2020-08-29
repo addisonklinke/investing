@@ -6,7 +6,7 @@ import warnings
 import yaml
 
 # Package metadata
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 # Simplify warning format to a single line
 warnings.formatwarning = lambda message, category, filename, lineno, line=None: \

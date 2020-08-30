@@ -73,29 +73,31 @@ def parse_period(period):
     """Convert various financial periods to number of days
 
     :param int/str period: Number of days for the return window or one of
-        the following keyword strings
-            * daily
-            * monthly
-            * quarterly
-            * yearly
-            * n-year
+        the following keyword strings. Each keyword can be adjusted using a
+        dash and modifier (i.e. 2-day, 6-year, etc)
+            * day
+            * month
+            * quarter
+            * year
     :return int days:
     """
     if isinstance(period, int):
         days = period
     elif isinstance(period, str):
-        if period == 'daily':
-            days = 1
-        elif period == 'monthly':
-            days = 30
-        elif period == 'quarterly':
-            days = 91
-        elif period == 'yearly':
-            days = 365
-        elif period.endswith('year') and '-' in period:
-            days = int(period.split('-')[0]) * 365
+        keyword_durations = {
+            'day': 1,
+            'month': 30,
+            'quarter': 91,
+            'year': 365}
+        if '-' in period:
+            multiplier, keyword = period.split('-')
+            multiplier = int(multiplier)
         else:
+            keyword = period
+            multiplier = 1
+        if keyword not in keyword_durations:
             raise ValueError(f'{period} string does not match supported formats')
+        days = multiplier * keyword_durations[keyword]
     else:
         raise ValueError(f'Exepcted type int or str, but received {type(period)}')
     return days

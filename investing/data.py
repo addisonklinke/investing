@@ -204,7 +204,7 @@ class Ticker:
             if target_date > self.data.index.max():
                 warn('Target date exceeds max downloaded')
             idx = self.data.index.get_loc(target_date, method='nearest')
-            return self.data.iloc[idx].date.to_numpy()
+            return self.data.index[idx].to_numpy()
 
     def _rolling(self, days, average=True):
         """Calculate rolling return of price data

@@ -40,7 +40,7 @@ for i, p in enumerate(conf['portfolios'], 1):
         raise ImproperlyConfigured(f'Portfolio {p["name"]} has no symbols defined')
 
 # Details for APIs used in this package
-endpoints = {
+conf['endpoints'] = {
     'alpha-vantage': 'https://www.alphavantage.co/query',
     'dataroma': 'https://dataroma.com/m/holdings.php',
     'finnhub': {

@@ -4,7 +4,7 @@ import json
 import os
 import pandas as pd
 import requests
-from . import conf, endpoints
+from . import conf
 from .exceptions import APIError
 
 
@@ -14,7 +14,7 @@ def holdings(ticker):
     :param str ticker: Company ticker (case insensitive).
     :return [str] held_tickers: Tickers of company holdings.
     """
-    r = requests.get(endpoints['dataroma'], {'m': ticker}, headers={"User-Agent": "XY"})
+    r = requests.get(conf['endpoints']['dataroma'], {'m': ticker}, headers={"User-Agent": "XY"})
     try:
         tables = pd.read_html(r.content)
     except ValueError:
@@ -40,7 +40,7 @@ def news(ticker=None):
             * summary (str)
             * url (str)
     """
-    url = endpoints['finnhub']['news']
+    url = conf['endpoints']['finnhub']['news']
     if ticker is None:
         params = {'category': 'general'}
     else:
@@ -59,7 +59,7 @@ def sentiment(ticker):
     :return float: 0-1 rating with 1 being bullish. None if no news articles
         were available
     """
-    url = endpoints['finnhub']['sentiment']
+    url = conf['endpoints']['finnhub']['sentiment']
     params = {
         'symbol': ticker,
         'token': conf['keys']['finnhub']}
@@ -80,7 +80,7 @@ def timeseries(ticker, length='compact'):
 
     # Check endpoint status
     r = requests.get(
-        url=endpoints['alpha-vantage'],
+        url=conf['endpoints']['alpha-vantage'],
         params={
             'function': 'TIME_SERIES_DAILY',
             'symbol': ticker.upper(),

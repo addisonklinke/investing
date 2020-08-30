@@ -48,7 +48,7 @@ class Launcher(InvestingLogging):
         comp_perf = subparsers['compare_performance']
         comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols')
         comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
-        # TODO arg for explicit metric choice
+        comp_perf.add_argument('-m', '--metrics', type=str, help='comma separate metric keywords')
 
         expected_return = subparsers['expected_return']
         expected_return.add_argument('tickers', type=str, help='comma separated ticker symbols')
@@ -141,11 +141,15 @@ class Launcher(InvestingLogging):
 
         # Calculate statistics
         comparison = PrettyTable()
-        comparison.field_names = ['Ticker', 'Name'] + [m.title() for m in conf['metrics']]
+        if args.metrics is None:
+            metrics = conf['metrics']
+        else:
+            metrics = [m.strip() for m in args.metrics.split(',')]
+        comparison.field_names = ['Ticker', 'Name'] + [m.title() for m in metrics]
         for t in tickers:
             ticker = Ticker(t)
             comparison.add_row(
-                [t.upper(), ticker.name] + [self._format_percent(ticker.metric(m)) for m in conf['metrics']])
+                [t.upper(), ticker.name] + [self._format_percent(ticker.metric(m)) for m in metrics])
 
         # Output to console and CSV
         print(comparison)

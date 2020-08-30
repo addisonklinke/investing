@@ -170,11 +170,11 @@ class Launcher(InvestingLogging):
             if locale == 'all':
                 print('\n'.join(pytz.all_timezones))
         finnhub_key = input('Finnhub API key (see https://finnhub.io/register): ')
-        alphavantage_key = input('AlphaVantage API key (see https://www.alphavantage.co/support/#api-key): ')
+        alpha_vantage_key = input('AlphaVantage API key (see https://www.alphavantage.co/support/#api-key): ')
         config_data = {
             'locale': locale,
             'keys': {
-                'alpha-vantage': alphavantage_key,
+                'alpha_vantage': alpha_vantage_key,
                 'finnhub': finnhub_key},
             'paths': {
                 'save': save_path}}

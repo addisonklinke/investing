@@ -15,7 +15,7 @@ portfolios:
       - SPY
 
 keys:
-  alpha-vantage: null
+  alpha_vantage: null
   finnhub: null
 
 metrics:

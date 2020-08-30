@@ -80,12 +80,12 @@ def timeseries(ticker, length='compact'):
 
     # Check endpoint status
     r = requests.get(
-        url=conf['endpoints']['alpha-vantage'],
+        url=conf['endpoints']['alpha_vantage'],
         params={
             'function': 'TIME_SERIES_DAILY',
             'symbol': ticker.upper(),
             'outputsize': length,
-            'apikey': conf['keys']['alpha-vantage']})
+            'apikey': conf['keys']['alpha_vantage']})
     if not r.ok:
         raise APIError(f'AlphaVantage API bad status code {r.status_code}')
 

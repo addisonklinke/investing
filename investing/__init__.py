@@ -41,7 +41,7 @@ for i, p in enumerate(conf['portfolios'], 1):
 
 # Details for APIs used in this package
 conf['endpoints'] = {
-    'alpha-vantage': 'https://www.alphavantage.co/query',
+    'alpha_vantage': 'https://www.alphavantage.co/query',
     'dataroma': 'https://dataroma.com/m/holdings.php',
     'finnhub': {
         'sentiment': 'https://finnhub.io/api/v1/news-sentiment',

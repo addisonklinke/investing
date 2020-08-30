@@ -79,16 +79,19 @@ def parse_period(period):
             * month
             * quarter
             * year
+            * ytd
     :return int days:
     """
     if isinstance(period, int):
         days = period
     elif isinstance(period, str):
+        today = datetime.today()
         keyword_durations = {
             'day': 1,
             'month': 30,
             'quarter': 91,
-            'year': 365}
+            'year': 365,
+            'ytd': (today - datetime(today.year, 1, 1)).days}
         if '-' in period:
             multiplier, keyword = period.split('-')
             multiplier = int(multiplier)

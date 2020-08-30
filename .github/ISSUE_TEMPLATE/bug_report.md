@@ -24,9 +24,7 @@ A clear and concise description of what you expected to happen
 What happens instead
 
 **Screenshots**
-If applicable, add screenshots to help explain your problem.
-These could include metrics from a reputable financial source (Yahoo Finance,
-Morning Start, etc) that conflict with those produced by `data.Ticker.metric()`
+If applicable, add screenshots to help explain your problem. For instance, metrics from a reputable financial source (Yahoo Finance, Morning Start, etc) that conflict with those produced by `data.Ticker.metric()`
 
 **Version:**
 Output from `investing.__version__`

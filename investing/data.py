@@ -19,18 +19,8 @@ import pytz
 import numpy as np
 from . import conf
 from .download import timeseries
+from .exceptions import TickerDataError
 from .mappings import ticker2name
-
-
-def is_current(ticker):
-    """Check if ticker CSV has the most recent data
-
-    :param str ticker: Ticker symbol to check
-    :return bool: Whether the latest timestamp matches the last market day
-    """
-    latest_close = market_day('latest')
-    t = Ticker(ticker, local_only=True)
-    return latest_close <= t.data.date.max()
 
 
 def market_day(direction, reference='today', search_days=7):
@@ -82,7 +72,7 @@ def market_day(direction, reference='today', search_days=7):
 def parse_period(period):
     """Convert various financial periods to number of days
 
-    :param int or str period: Number of days for the return window or one of
+    :param int/str period: Number of days for the return window or one of
         the following keyword strings
             * daily
             * monthly
@@ -111,39 +101,6 @@ def parse_period(period):
     return days
 
 
-def ticker_data(ticker):
-    """Helper function to refresh local ticker data or fetch if missing
-
-    :param str ticker: Stock ticker symbol (case-insensitive)
-    :return str status: One of the following
-        * current: No API call needed, local data is up-to-date
-        * missing: No remote data found, perhaps an incorrect ticker symbol
-        * full: No previous local data was found, downloaded full from API
-        * compact: Previous local data was refreshed with more recent API data
-    """
-    path = os.path.join(conf['paths']['save'], '{}.csv'.format(ticker.lower()))
-    if os.path.exists(path):
-        if is_current(ticker):
-            return 'current'
-        length = 'compact'
-        existing = pd.read_csv(path)
-    else:
-        length = 'full'
-        existing = None
-    ts = timeseries(ticker, length)
-    if len(ts) == 0:
-        return 'missing'
-    new = pd.DataFrame.from_dict(ts, orient='index', columns=['price'])
-    new['date'] = new.index
-    if existing is not None:
-        combined = pd.concat([new, existing])
-        combined = combined[~combined.date.duplicated()]
-    else:
-        combined = new
-    combined.to_csv(path, index=False)
-    return length
-
-
 class Portfolio:
     """Combination of several holdings
 
@@ -165,7 +122,7 @@ class Portfolio:
 
     def __str__(self):
         """Human readable naming for all holdings"""
-        return ', '.join([f'{h.ticker} ({w:.2f})' for h, w in zip(self.holdings, self.weights)])
+        return ', '.join([f'{h.symbol} ({w:.2f})' for h, w in zip(self.holdings, self.weights)])
 
     def __repr__(self):
         """Displayable instance name for print() function"""
@@ -180,10 +137,10 @@ class Portfolio:
         :return 3-tuple(float): Mean and standard deviation of return and
             least number of data points used for an individual holding
         """
-        sample_pools = [h.rolling(period, average=False) for h in self.holdings]
+        sample_pools = [h.metric(f'rolling/{period}', average=False) for h in self.holdings]
         missing = [len(s) == 0 for s in sample_pools]
         if any(missing):
-            too_long = ', '.join([self.holdings[i].ticker for i, m in enumerate(missing) if m])
+            too_long = ', '.join([self.holdings[i].symbol for i, m in enumerate(missing) if m])
             raise RuntimeError(f'Insufficient data for {period} period for holdings {too_long}')
         individual = np.stack([s.sample(n, replace=True).values for s in sample_pools])
         composite = np.sum(individual * np.array(self.weights).reshape((-1, 1)), axis=0)
@@ -196,62 +153,41 @@ class Portfolio:
 
 
 class Ticker:
-    """Manage ticker data and calculate descriptive statistics
+    """Manages ticker data and calculates descriptive statistics
 
-    :param str ticker: Case-insensitive stock abbreviation
-    :param bool local_only: Don't download missing data, raise ``ValueError``
+    Price data is stored on disk in a CSV and loaded into the ``data``
+    attribute as a Pandas ``DataFrame``. Prices are indexed by date in
+    descending order (most recent first).
+
+    The free-tier of Alpha-Vantage limits users to 5 API calls/minute.
+    Therefore, the ``data`` attribute is only refreshed on explicit calls.
+    Auto-refreshing on each initialization might exceed the rate limit if the
+    calling scope creates several ``Ticker`` objects simultaneously.
     """
 
-    def __init__(self, ticker, local_only=False):
-        self.ticker = ticker.upper()
-        csv_path = os.path.join(conf['paths']['save'], f'{ticker.lower()}.csv')
-        if not os.path.isfile(csv_path):
-            if not local_only:
-                status = ticker_data(ticker)
-                if status != 'full':
-                    raise RuntimeError(f'Unexpected status {status} for attempted {ticker.upper()} download')
-            else:
-                raise ValueError(f'Local only ticker CSV not found at {csv_path}, try local_only=False')
-        self.data = pd.read_csv(csv_path, parse_dates=['date'])
-        self._format_csv()
+    def __init__(self, symbol):
+        """Load data from disk and format in Pandas
+
+        :param str symbol: Case-insensitive stock abbreviation
+        """
+
+        self.symbol = symbol.upper()
+        self.csv_path = os.path.join(conf['paths']['save'], f'{symbol.lower()}.csv')
+        if os.path.isfile(self.csv_path):
+            self.data = pd.read_csv(self.csv_path, parse_dates=['date'], index_col=['date'])
+        else:
+            self.data = pd.DataFrame(columns=['price'])
+        self._sort_dates()
 
     def __str__(self):
         """Full company name"""
-        return ticker2name.get(self.ticker.upper(), 'Unknown')
+        return ticker2name.get(self.symbol.upper(), 'Unknown')
 
     def __repr__(self):
         """Displayable instance name for print() function"""
-        return f'Ticker({self.ticker})'
+        return f'Ticker({self.symbol})'
 
-    def _format_csv(self):
-        """Shared between constructor methods to parse date column and add as index"""
-        self.data.sort_values('date', inplace=True)
-        self.data.set_index(pd.DatetimeIndex(self.data.date), inplace=True)
-
-    def metric(self, metric_name):
-        """Parse metric names and dispatch to appropriate method
-
-        :param str metric_name: In the form ``{rolling,trailing}/period``
-        :return float: Calculated metric
-        :raises ValueError: For improperly formatted metric names
-        """
-        try:
-            metric_type, period = metric_name.split('/')
-        except ValueError:
-            raise ValueError(f'Metric {metric_name} does not match {{rolling,trailing}}/period format')
-        if metric_type == 'rolling':
-            return self.rolling(period)
-        elif metric_type == 'trailing':
-            return self.trailing(period)
-        else:
-            raise ValueError(f'Expected metric type to be rolling or trailing, but received {metric_type}')
-
-    @property
-    def name(self):
-        """Full company name via call to internal __str__"""
-        return str(self)
-
-    def nearest(self, target_date):
+    def _nearest(self, target_date):
         """Determine closest available business date to the target
 
         :param np.datetime64 or str target_date: Timestamp to use for indexing. Can
@@ -260,13 +196,97 @@ class Ticker:
         """
         if isinstance(target_date, str):
             target_date = pd.Timestamp(datetime.strptime(target_date, '%Y-%m-%d')).to_numpy()
-        if target_date in self.data.date.values:
+        if target_date in self.data.index.values:
             return target_date
         else:
             if target_date > self.data.index.max():
                 warn('Target date exceeds max downloaded')
             idx = self.data.index.get_loc(target_date, method='nearest')
             return self.data.iloc[idx].date.to_numpy()
+
+    def _rolling(self, days, average=True):
+        """Calculate rolling return of price data
+
+        :param int or str days: Number of days for the return window
+        :param bool average: Whether to take the mean rolling return or
+            return all individual datapoints
+        :return float or pd.Series: Rolling return(s)
+        """
+
+        rolling = self.data.price.pct_change(days).dropna()
+        if average:
+            return rolling.mean()
+        else:
+            return rolling
+
+    def _sort_dates(self):
+        """Place most recent dates at top
+
+        Order is assumed by some metrics like ``_rolling``, so we need to
+        share this between the constructor and refresh methods for consistency
+        """
+        self.data.sort_index(ascending=False, inplace=True)
+
+    def _trailing(self, days, end='today'):
+        """Calculate trailing return of price data
+
+        :param int or str days: Number of days for the return window
+        :param str end: End date for point to point calculation. Either
+            keyword ``today`` or a timestamp formatted ``yyyy-mm-dd``
+        :return float:
+        """
+        if end == 'today':
+            end_dt = pd.Timestamp(date.today()).to_numpy()
+        else:
+            end_dt = pd.Timestamp(datetime.strptime(end, '%Y-%m-%d')).to_numpy()
+        trail_dt = end_dt - np.timedelta64(days, 'D')
+        end_price = self.price(end_dt)
+        trail_price = self.price(trail_dt)
+        return (end_price - trail_price) / trail_price
+
+    @property
+    def has_csv(self):
+        """Check whether correspond CSV exists on disk"""
+        return os.path.isfile(self.csv_path)
+
+    @property
+    def is_current(self):
+        """Check if instance has the most recent ticker data
+
+        :return bool: Whether the latest timestamp matches the last market day
+        """
+        if len(self.data) == 0:
+            return False
+        latest_close = market_day('latest')
+        return latest_close <= self.data.index.max()
+
+    def metric(self, metric_name, **kwargs):
+        """Parse metric names and dispatch to appropriate internal method
+
+        :param str metric_name: In the form ``metric_type/period`` where
+            ``metric_type`` is rolling, trailing, etc and ``period`` is a
+            financial period interpretable by ``parse_period``
+        :param dict kwargs: Metric-specifc arguments to be forwarded
+        :return float: Calculated metric
+        :raises NotImplementedError: For metric names with no corresponding
+            class method
+        """
+        if len(self.data) == 0:
+            raise TickerDataError('No data available, try running .refresh()')
+        try:
+            metric_type, period = metric_name.split('/')
+        except ValueError:
+            raise ValueError(f'Metric {metric_name} does not match metric_type/period format')
+        try:
+            method = getattr(self, '_' + metric_type)
+        except AttributeError:
+            raise NotImplementedError(f'No metric defined for {metric_type}')
+        return method(parse_period(period), **kwargs)
+
+    @property
+    def name(self):
+        """Full company name via call to internal __str__"""
+        return str(self)
 
     def price(self, date, exact=False):
         """Retrieve price by date from data attribute
@@ -283,49 +303,36 @@ class Ticker:
             date = pd.Timestamp(datetime.strptime(date, '%Y-%m-%d')).to_numpy()
         if date not in self.data.index:
             if not exact:
-                date = self.nearest(date)
+                date = self._nearest(date)
             else:
-                raise ValueError(f'Start reference date {date} not in data')
+                raise ValueError(f'Requested date {date} not in data')
         return self.data.loc[date].price
 
-    def rolling(self, period, average=True):
-        """Calculate rolling return of price data
+    def refresh(self):
+        """Refresh local ticker data
 
-        :param int or str period: Number of days for the return window or a
-            keyword string such as daily, monthly, yearly, 5-year, etc.
-        :param bool average: Whether to take the mean rolling return or
-            return all individual datapoints
-        :return float or pd.Series: Rolling return(s)
+        Idempotent behavior if data is already current
         """
 
-        days = parse_period(period)
-        rolling = self.data.price.pct_change(days).dropna()
-        if average:
-            return rolling.mean()
+        # Check status of existing data
+        if self.is_current:
+            return
+        if self.has_csv:
+            if self.data.index.max() < datetime.today() - timedelta(days=100):
+                length = 'full'
+            else:
+                length = 'compact'
+            existing = self.data
         else:
-            return rolling
+            length = 'full'
+            existing = None
 
-    def trailing(self, period, end='today'):
-        """Calculate trailing return of price data
-
-        :param int or str period: Number of days for the return window or a
-            keyword string such as daily, monthly, yearly, 5-year, etc.
-        :param str end: End date for point to point calculation. Either
-            keyword ``today`` or a timestamp formatted ``yyyy-mm-dd``
-        :return float:
-        """
-        days = parse_period(period)
-        if end == 'today':
-            end_dt = pd.Timestamp(date.today()).to_numpy()
+        # Merge data from Alpha-Vantage API with existing and write to disk
+        new = timeseries(self.symbol, length)
+        if existing is not None:
+            combined = pd.concat([new, existing])
+            self.data = combined[~combined.index.duplicated()]
         else:
-            end_dt = pd.Timestamp(datetime.strptime(end, '%Y-%m-%d')).to_numpy()
-        trail_dt = end_dt - np.timedelta64(days, 'D')
-        end_price = self.price(end_dt)
-        trail_price = self.price(trail_dt)
-        return (end_price - trail_price) / trail_price
-
-    @classmethod
-    def from_df(cls, dataframe):
-        """Construct instance from pre-loaded data already in memory"""
-        cls.data = dataframe
-        cls._format_csv()
+            self.data = new
+        self._sort_dates()
+        self.data.to_csv(self.csv_path)

@@ -8,9 +8,9 @@ from prettytable import PrettyTable
 import pytz
 import yaml
 from investing import conf, InvestingLogging
-from investing.data import is_current, Portfolio, Ticker, ticker_data
+from investing.data import Portfolio, Ticker
 from investing.download import holdings
-from investing.mappings import ticker2name
+import investing.exceptions as exceptions
 from investing.utils import ptable_to_csv, SubCommandDefaults
 
 # TODO explicit submodule imports with "import investing.x as x"
@@ -30,8 +30,6 @@ class Launcher(InvestingLogging):
     :param str branch: Name of git branch to use when running.
     """
 
-    # TODO longer method docstrings for Sphinx, but only first line in argparse
-
     def __init__(self):
         super(Launcher, self).__init__()
 
@@ -49,8 +47,9 @@ class Launcher(InvestingLogging):
         # Add workflow-specific args to each subparser
         comp_perf = subparsers['compare_performance']
         comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols')
-        comp_perf.add_argument('format', nargs='?', choices=['pdf', 'csv'], help='optional output report format')
         comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
+        # TODO arg for explicit metric choice
+
         expected_return = subparsers['expected_return']
         expected_return.add_argument('tickers', type=str, help='comma separated ticker symbols')
         expected_return.add_argument('holding_periods', type=str, help='comma separated financial period keyword(s)')
@@ -92,15 +91,21 @@ class Launcher(InvestingLogging):
         else:
             return f'{p * 100:.{decimals}f}%'
 
-    def _get_portfolio(self):
-        """Helper function to load tickers defined in user's portfolio"""
-        portfolio = os.path.join(conf['paths']['save'], 'portfolios.txt')
-        if not os.path.exists(portfolio):
-            print(f'Portfolio list not found at {portfolio}, please run monitor_portfolios workflow first')
-            return []
-        with open(portfolio, 'r') as f:
-            tickers = [l.strip() for l in f.read().split('\n') if l != '']
-        return tickers
+    def _load_portfolios(self):
+        """Helper function to load unique tickers defined in user's portfolios
+
+        Sort returned tickers for better reproducibility in calling scopes
+        like ``_refresh_tickers``
+        """
+        tickers = []
+        for p in conf['portfolios']:
+            if p['type'] == 'manual':
+                tickers += p['symbols']
+            elif p['type'] == 'follow':
+                for s in p['symbols']:
+                    self.logger.info(f'Downloading holdings for {s}')
+                    tickers += holdings(s)
+        return sorted(list(set(tickers)))
 
     def _refresh_tickers(self, tickers):
         """Helper function to get most recent ticker data
@@ -109,22 +114,17 @@ class Launcher(InvestingLogging):
         :return: None
         """
         self.logger.info('Sleeping for 12 seconds between API calls (AlphaVantage free tier limitation)')
-        for i, t in enumerate(tickers):
+        for i, t in enumerate(tickers, 1):
+            ticker = Ticker(t)
+            if ticker.is_current:
+                self.logger.info(f'{i}/{len(tickers)}: {ticker.symbol} already up-to-date')
+                continue
             try:
-                status = ticker_data(t)
-            except RuntimeError:
-                self.logger.exception(f'Timeseries download error, skipping {t.upper()}')
+                ticker.refresh()
+            except exceptions.APIError:
+                self.logger.exception(f'Timeseries download error, skipping {ticker.symbol}')
                 continue
-            if status == 'current':
-                self.logger.info(f'{i + 1}/{len(tickers)}: {t.upper()} already up-to-date')
-                continue
-            elif status in ['compact', 'full']:
-                self.logger.info(f'{i + 1}/{len(tickers)}: downloaded {t.upper()} ({status})')
-            elif status == 'missing':
-                self.logger.warning(f'No data found for {t.upper()}')
-                continue
-            else:
-                raise ValueError(f'Unknown status string {status} from download.ticker_data()')
+            self.logger.info(f'{i}/{len(tickers)}: refreshed {ticker.symbol}')
             sleep(12)
 
     def compare_performance(self, args):
@@ -147,20 +147,15 @@ class Launcher(InvestingLogging):
             comparison.add_row(
                 [t.upper(), ticker.name] + [self._format_percent(ticker.metric(m)) for m in conf['metrics']])
 
-        # Output to requested format
+        # Output to console and CSV
         print(comparison)
-        if args.format == 'csv':
-            self.logger.info('Saving results to comparison.csv')
-            ptable_to_csv(comparison, 'comparison.csv')
-        elif args.format == 'pdf':
-            raise NotImplementedError('PDF report format is not yet supported')
+        self.logger.info('Saving results to comparison.csv')
+        ptable_to_csv(comparison, 'comparison.csv')
 
     def daily_tickers(self, args):
         """Download new time series data for followed tickers"""
-        tickers = self._get_portfolio()
-        if len(tickers) == 0:
-            return
-        self.logger.info(f'Found {len(tickers)} tickers to check prices for')
+        tickers = self._load_portfolios()
+        self.logger.info(f'Checking prices for {len(tickers)} configured tickers')
         self._refresh_tickers(tickers)
 
     def configure(self, args):
@@ -193,16 +188,6 @@ class Launcher(InvestingLogging):
         local = [os.path.splitext(f)[0] for f in os.listdir(conf['paths']['save']) if f.endswith('.csv')]
         print('\n'.join(sorted(local)))
 
-    def monitor_portfolios(self, args):
-        """Check holdings of major investment firms such as Berkshire Hathaway"""
-        held_tickers = []
-        for ticker, investor in conf['following'].items():
-            self.logger.info(f'Downloading holdings for {ticker}')
-            held_tickers += holdings(ticker)
-        unique = set(held_tickers)
-        with open(os.path.join(conf['paths']['save'], 'portfolios.txt'), 'w') as f:
-            f.write('\n'.join(unique))
-
     def expected_return(self, args):
         """Calculate joint return probability across several holdings"""
 
@@ -213,7 +198,7 @@ class Launcher(InvestingLogging):
         else:
             weights = [float(w) for w in args.weights.split(',')]
         portfolio = Portfolio(tickers, weights)
-        self.logger.info(f'Initialized portfolio object {portfolio}')
+        self.logger.info(f'Initialized {repr(portfolio)}')
 
         # Calculate returns and print results
         returns = PrettyTable()
@@ -235,23 +220,19 @@ class Launcher(InvestingLogging):
 
     def search(self, args):
         """Check if ticker data exists locally"""
-        tick_up = args.ticker.upper()
-        tick_low = args.ticker.lower()
-        csv_path = os.path.join(conf['paths']['save'], f'{tick_low}.csv')
-        name = ticker2name.get(tick_up, 'Unknown')
-        if os.path.exists(csv_path):
+        ticker = Ticker(args.ticker)
+        if ticker.has_csv:
             status = 'Found'
-            if not is_current(tick_low):
+            if not ticker.is_current():
                 status += ' stale'
         else:
             status = 'Missing'
-        msg = f'{status} local data for {tick_up}'
-        if name == 'Unknown':
+        msg = f'{status} local data for {ticker.symbol}'
+        if ticker.name == 'Unknown':
             msg += ' - name not in mappings.ticker2name, please submit pull request'
         else:
-            msg += f' ({name})'
+            msg += f' ({ticker.name})'
         print(msg)
-        return status == 'found'
 
     def show_config(self, args):
         """Print active configuration values to console for confirmation"""

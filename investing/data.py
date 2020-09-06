@@ -12,6 +12,7 @@ common financial periods and querying valid market days.
 
 from datetime import date, datetime, timedelta
 import os
+import re
 from warnings import warn
 import pandas as pd
 import pandas_market_calendars as mcal
@@ -179,7 +180,11 @@ class Ticker:
         self.symbol = symbol.upper()
         self.csv_path = os.path.join(conf['paths']['save'], f'{symbol.lower()}.csv')
         if os.path.isfile(self.csv_path):
-            self.data = pd.read_csv(self.csv_path, parse_dates=['date'], index_col=['date'])
+            self.data = pd.read_csv(
+                self.csv_path,
+                converters={'price': self._force_float},
+                parse_dates=['date'],
+                index_col=['date'])
         else:
             self.data = pd.DataFrame(columns=['price'])
         self._sort_dates()
@@ -191,6 +196,19 @@ class Ticker:
     def __repr__(self):
         """Displayable instance name for print() function"""
         return f'Ticker({self.symbol})'
+
+    @staticmethod
+    def _force_float(raw):
+        """Cast various data types to float"""
+        if isinstance(raw, float):
+            return raw
+        elif isinstance(raw, int):
+            return float(raw)
+        elif isinstance(raw, str):
+            clean = re.sub('[^0-9\.]+', '', raw)
+            return float(clean)
+        else:
+            raise NotImplementedError(f'Unsure how to cast {raw} of type {type(raw)}')
 
     def _nearest(self, target_date):
         """Determine closest available business date to the target

@@ -33,9 +33,18 @@ The best option as of this writing appears to be the Metals API listed above whi
 history (limited to 50 calls/month).
 Fortunately, the [World Gold Council](https://www.gold.org/goldhub/data/gold-prices) provides an XLSX file
 with daily prices going back to 1979.
+
 By manually extracting the date and price columns from their "Daily" tab, you can save this under `xau.csv`
 in your configured save path.
 This will serve as a starting point which the Metals API can continue adding to automatically as time goes on.
+After saving the CSV, load and save it once through this package's `Ticker` class in order to apply consistent formatting
+
+```python
+from investing.data import Ticker
+
+xau = Ticker('xau')
+xau.data.to_csv(xau.csv_path)
+```
 
 ## Disclaimer
 

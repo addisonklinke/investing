@@ -50,12 +50,15 @@ class Launcher(InvestingLogging):
         comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
         comp_perf.add_argument('-m', '--metrics', type=str, help='comma separate metric keywords')
 
+        subparsers['download'].add_argument('ticker', type=str, help='symbol to search for (case insensitive)')
+
         expected_return = subparsers['expected_return']
         expected_return.add_argument('tickers', type=str, help='comma separated ticker symbols')
         expected_return.add_argument('holding_periods', type=str, help='comma separated financial period keyword(s)')
         expected_return.add_argument('weights', nargs='?', help='proportion of each ticker (assumed equal if absent)')
         expected_return.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
         expected_return.add_argument('-n', '--num_trials', type=int, default=1000, help='number of Monte Carlo trials')
+
         subparsers['search'].add_argument('ticker', type=str, help='symbol to search for (case insensitive)')
         args = parser.parse_args()
         if args.workflow is None:
@@ -186,6 +189,10 @@ class Launcher(InvestingLogging):
         tickers = self._load_portfolios()
         self.logger.info(f'Checking prices for {len(tickers)} configured tickers')
         self._refresh_tickers(tickers)
+
+    def download(self, args):
+        """Manually download ticker data for a specific symbol"""
+        self._refresh_tickers([args.ticker])
 
     def expected_return(self, args):
         """Calculate joint return probability across several holdings"""

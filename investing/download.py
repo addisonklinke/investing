@@ -6,7 +6,6 @@ import os
 import pandas as pd
 import requests
 from . import conf
-from .data import parse_period
 from .exceptions import APIError
 
 
@@ -35,14 +34,13 @@ def metals(ticker, base='USD', look_back=5):
     :param str ticker: Case insensitive exchange symbol (i.e. XAU for gold)
     :param str base: Currency or metal code for calculating relative prices
     :param str/int look_back: Number of days to return starting from today
-        (limited to 5 days on free tier). Any strings must be able to be
-        parsed by ``data.parse_period``
+        (limited to 5 days on free tier)
     :return pd.DataFrame:
     """
 
     # Check endpoint status
     end_date = datetime.today()
-    start_date = end_date - timedelta(days=parse_period(look_back))
+    start_date = end_date - timedelta(days=look_back)
     r = requests.get(
         url=conf['endpoints']['metals'],
         params={

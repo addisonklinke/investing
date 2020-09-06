@@ -156,12 +156,6 @@ class Launcher(InvestingLogging):
         self.logger.info('Saving results to comparison.csv')
         ptable_to_csv(comparison, 'comparison.csv')
 
-    def daily_tickers(self, args):
-        """Download new time series data for followed tickers"""
-        tickers = self._load_portfolios()
-        self.logger.info(f'Checking prices for {len(tickers)} configured tickers')
-        self._refresh_tickers(tickers)
-
     def configure(self, args):
         """Populate YAML fields on initial install"""
         print('Please enter the following values to configure your investing install')
@@ -187,10 +181,11 @@ class Launcher(InvestingLogging):
         print('Configuration successfully written')
         print("Please run 'python launcher.py show_config' to confirm")
 
-    def list(self, args):
-        """Print all locally available ticker symbols alphabetically sorted"""
-        local = [os.path.splitext(f)[0] for f in os.listdir(conf['paths']['save']) if f.endswith('.csv')]
-        print('\n'.join(sorted(local)))
+    def daily_tickers(self, args):
+        """Download new time series data for followed tickers"""
+        tickers = self._load_portfolios()
+        self.logger.info(f'Checking prices for {len(tickers)} configured tickers')
+        self._refresh_tickers(tickers)
 
     def expected_return(self, args):
         """Calculate joint return probability across several holdings"""
@@ -221,6 +216,11 @@ class Launcher(InvestingLogging):
         print(returns)
         self.logger.info('Saving results to returns.csv')
         ptable_to_csv(returns, 'returns.csv')
+
+    def list(self, args):
+        """Print all locally available ticker symbols alphabetically sorted"""
+        local = [os.path.splitext(f)[0] for f in os.listdir(conf['paths']['save']) if f.endswith('.csv')]
+        print('\n'.join(sorted(local)))
 
     def search(self, args):
         """Check if ticker data exists locally"""

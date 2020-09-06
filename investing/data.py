@@ -171,10 +171,12 @@ class Ticker:
     calling scope creates several ``Ticker`` objects simultaneously.
     """
 
-    def __init__(self, symbol):
+    def __init__(self, symbol, merge=None):
         """Load data from disk and format in Pandas
 
         :param str symbol: Case-insensitive stock abbreviation
+        :param str merge: Add a ``relative`` column for price compared to
+            another ticker (i.e. XAU for gold oz) for any overlapping dates.
         """
 
         self.symbol = symbol.upper()
@@ -185,6 +187,17 @@ class Ticker:
                 converters={'price': self._force_float},
                 parse_dates=['date'],
                 index_col=['date'])
+            if merge is not None:
+                relative_csv = os.path.join(conf['paths']['save'], f'{merge}.csv')
+                if os.path.isfile(relative_csv):
+                    rel = pd.read_csv(
+                        relative_csv,
+                        converters={'price': self._force_float},
+                        parse_dates=['date'],
+                        index_col=['date'])
+                    rel.rename(columns={'price': 'other'}, inplace=True)
+                    combined = self.data.join(rel)
+                    self.data['relative'] = combined.apply(lambda row: row.price / row.other, axis=1)
         else:
             self.data = pd.DataFrame(columns=['price'])
         self._sort_dates()

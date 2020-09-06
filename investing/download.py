@@ -1,10 +1,12 @@
 """Retrieve data from configured API endpoints"""
 
+from datetime import datetime, timedelta
 import json
 import os
 import pandas as pd
 import requests
 from . import conf
+from .data import parse_period
 from .exceptions import APIError
 
 
@@ -22,6 +24,43 @@ def holdings(ticker):
     holdings = tables[0]
     held_tickers = [s.split('-')[0].strip() for s in holdings.Stock]
     return held_tickers
+
+
+def metals(ticker, base='USD', look_back=5):
+    """Get precious metal prices relative to USD or other base currency
+
+    See official documentation on Metals API website
+    https://metals-api.com/documentation#timeseries
+
+    :param str ticker: Case insensitive exchange symbol (i.e. XAU for gold)
+    :param str base: Currency or metal code for calculating relative prices
+    :param str/int look_back: Number of days to return starting from today
+        (limited to 5 days on free tier). Any strings must be able to be
+        parsed by ``data.parse_period``
+    :return pd.DataFrame:
+    """
+
+    # Check endpoint status
+    end_date = datetime.today()
+    start_date = end_date - timedelta(days=parse_period(look_back))
+    r = requests.get(
+        url=conf['endpoints']['metals'],
+        params={
+            'access_key': conf['keys']['metals'],
+            'base': base,
+            'symbols': ticker,
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': end_date.strftime('%Y-%m-%d')})
+    if not r.ok:
+        raise APIError(f'Metals API bad status code {r.status_code}')
+
+    # Parse exchange rates and format into Pandas
+    data = json.loads(r.content)
+    exchage_rates = {date: prices[base.upper()] / prices[ticker.upper()] for date, prices in data['rates'].items()}
+    dates, prices = zip(*exchage_rates.items())
+    df = pd.DataFrame({'price': prices}, index=pd.DatetimeIndex(dates))
+    df.index.name = 'date'
+    return df
 
 
 def news(ticker=None):

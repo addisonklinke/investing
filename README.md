@@ -25,7 +25,17 @@ Any values from the user-created config will take precedence over the default co
 You will need (free) accounts with the following websites to populate the API key fields
 
 * [Finnhub](https://finnhub.io/register)
-* [Alpha Vantage](https://www.alphavantage.co/support/#api-key) 
+* [Alpha Vantage](https://www.alphavantage.co/support/#api-key)
+* [Metals API](https://metals-api.com/pricing)
+
+Currently, there is not a free API that can provide 20+ year historical data on gold prices.
+The best option as of this writing appears to be the Metals API listed above which can return a 5-day
+history (limited to 50 calls/month).
+Fortunately, the [World Gold Council](https://www.gold.org/goldhub/data/gold-prices) provides an XLSX file
+with daily prices going back to 1979.
+By manually extracting the date and price columns from their "Daily" tab, you can save this under `xau.csv`
+in your configured save path.
+This will serve as a starting point which the Metals API can continue adding to automatically as time goes on.
 
 ## Disclaimer
 

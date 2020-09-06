@@ -45,7 +45,8 @@ conf['endpoints'] = {
     'dataroma': 'https://dataroma.com/m/holdings.php',
     'finnhub': {
         'sentiment': 'https://finnhub.io/api/v1/news-sentiment',
-        'news': 'https://finnhub.io/api/v1/news'}}
+        'news': 'https://finnhub.io/api/v1/news'},
+    'metals': 'https://metals-api.com/api/timeseries'}
 
 
 class InvestingLogging:

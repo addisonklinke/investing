@@ -172,11 +172,13 @@ class Launcher(InvestingLogging):
                 print('\n'.join(pytz.all_timezones))
         finnhub_key = input('Finnhub API key (see https://finnhub.io/register): ')
         alpha_vantage_key = input('AlphaVantage API key (see https://www.alphavantage.co/support/#api-key): ')
+        metals_key = input('Metals API key (see https://metals-api.com/pricing): ')
         config_data = {
             'locale': locale,
             'keys': {
                 'alpha_vantage': alpha_vantage_key,
-                'finnhub': finnhub_key},
+                'finnhub': finnhub_key,
+                'metals': metals_key},
             'paths': {
                 'save': save_path}}
         with open('config/investing.yaml', 'w') as stream:

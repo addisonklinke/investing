@@ -17,6 +17,7 @@ portfolios:
 keys:
   alpha_vantage: null
   finnhub: null
+  metals: null
 
 metrics:
   - rolling/3-year

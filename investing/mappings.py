@@ -1,5 +1,21 @@
 """Static mappings for common conversions"""
 
+forex = (
+    'AUD',
+    'CAD',
+    'CHF',
+    'EUR',
+    'GBP',
+    'JPY',
+    'NZD',
+    'USD',
+    'XAG',
+    'XAU',
+    'XPD',
+    'XPT',
+    'XRH',
+)
+
 ticker2name = {
     'A': 'Agilent Technologies',
     'AA': 'Alcoa',

@@ -19,9 +19,9 @@ import pandas_market_calendars as mcal
 import pytz
 import numpy as np
 from . import conf
-from .download import timeseries
+from .download import metals, timeseries
 from .exceptions import TickerDataError
-from .mappings import ticker2name
+from .mappings import forex, ticker2name
 
 
 def market_day(direction, reference='today', search_days=7):
@@ -363,8 +363,11 @@ class Ticker:
             length = 'full'
             existing = None
 
-        # Merge data from Alpha-Vantage API with existing and write to disk
-        new = timeseries(self.symbol, length)
+        # Merge data from Alpha-Vantage or Metals API with existing and write to disk
+        if self.symbol in forex:
+            new = metals(self.symbol)
+        else:
+            new = timeseries(self.symbol, length)
         if existing is not None:
             combined = pd.concat([new, existing])
             self.data = combined[~combined.index.duplicated()]

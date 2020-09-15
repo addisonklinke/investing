@@ -1,4 +1,5 @@
 import argparse
+from itertools import chain
 import logging
 import math
 import os
@@ -98,16 +99,25 @@ class Launcher(InvestingLogging):
         """Helper function to load unique tickers defined in user's portfolios
 
         Sort returned tickers for better reproducibility in calling scopes
-        like ``_refresh_tickers``
+        like ``_refresh_tickers``. If a followed portfolio has the ``shared``
+        flag enabled, only include commonly held tickers
         """
         tickers = []
         for p in conf['portfolios']:
             if p['type'] == 'manual':
                 tickers += p['symbols']
             elif p['type'] == 'follow':
+                held = {}
                 for s in p['symbols']:
                     self.logger.info(f'Downloading holdings for {s}')
-                    tickers += holdings(s)
+                    held[s] = holdings(s)
+                if p.get('shared', False):
+                    shared = list(set.intersection(*[set(s) for s in held.values()]))
+                    if len(shared) == 0:
+                        self.logger.warning(f'No shared tickers in {p["name"]} portfolio: {", ".join(p["symbols"])}')
+                    tickers += shared
+                else:
+                    tickers += list(chain(*held.values()))
         return sorted(list(set(tickers)))
 
     def _refresh_tickers(self, tickers):

@@ -5,6 +5,7 @@ paths:
 portfolios:
   - name: Experts
     type: follow
+    shared: True
     symbols:
       - GFT
       - BRK

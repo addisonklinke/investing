@@ -236,7 +236,7 @@ class Launcher(InvestingLogging):
         ticker = Ticker(args.ticker)
         if ticker.has_csv:
             status = 'Found'
-            if not ticker.is_current():
+            if not ticker.is_current:
                 status += ' stale'
         else:
             status = 'Missing'

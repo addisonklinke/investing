@@ -2105,8 +2105,9 @@ ticker2name = {
     'NNI': 'Nelnet',
     'NNN': 'National Retail Properties',
     'NOBH': 'Nobility Homes',
-    'NOR': 'Noranda Aluminum Holding',
+    'NOBL': 'ProShares S&P 500 Dividend Aristocrats ETF',
     'NOC': 'Northrop Grumman Corporation',
+    'NOR': 'Noranda Aluminum Holding',
     'NOV': 'National Oilwell Varco',
     'NOVB': 'North Valley Bancorp',
     'NOW': 'ServiceNow',
@@ -3115,6 +3116,7 @@ ticker2name = {
     'VDSI': 'VASCO Data Security International',
     'VECO': 'Veeco Instruments',
     'VG': 'Vonage Holdings Corporation',
+    'VGT': 'Vanguard Information Technology ETF',
     'VGZ': 'Vista Gold',
     'VHC': 'VirnetX Holding',
     'VHI': 'Valhi',
@@ -3164,6 +3166,7 @@ ticker2name = {
     'VSH': 'Vishay Intertechnology',
     'VSR': 'Versar',
     'VSTM': 'Verastem',
+    'VTI': 'Vanguard Total Stock Market ETF',
     'VTNC': 'Vitran',
     'VTNR': 'Vertex Energy',
     'VTR': 'Ventas',
@@ -3324,4 +3327,5 @@ ticker2name = {
     'ZOLT': 'Zoltek Companies',
     'ZOOM': 'ZOOM Technologies',
     'ZQK': 'Quiksilver',
-    'ZUMZ': 'Zumiez'}
+    'ZUMZ': 'Zumiez',
+}

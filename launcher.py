@@ -8,6 +8,7 @@ from time import sleep
 from prettytable import PrettyTable
 import pytz
 import yaml
+from investing import __version__
 from investing import conf, InvestingLogging
 from investing.data import Portfolio, Ticker
 from investing.download import holdings
@@ -39,6 +40,7 @@ class Launcher(InvestingLogging):
         parser = argparse.ArgumentParser(
             formatter_class=lambda prog: SubCommandDefaults(prog, width=120, max_help_position=50))
         parser.add_argument('-f', '--foreground', action='store_true', help='print logs to stdout in addition to file')
+        parser.add_argument('-v', '--version', action='store_true', help='print package version')
         manager = parser.add_subparsers(dest='workflow', metavar='workflow')
         subparsers = {}
         for w in workflows:
@@ -62,6 +64,11 @@ class Launcher(InvestingLogging):
 
         subparsers['search'].add_argument('ticker', type=str, help='symbol to search for (case insensitive)')
         args = parser.parse_args()
+
+        # Check parsed arguments
+        if args.version:
+            print(__version__)
+            sys.exit(0)
         if args.workflow is None:
             print('workflow is required')
             sys.exit(1)

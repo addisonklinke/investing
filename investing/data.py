@@ -11,6 +11,7 @@ common financial periods and querying valid market days.
 """
 
 from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
 import os
 import re
 from warnings import warn
@@ -240,15 +241,16 @@ class Ticker:
             idx = self.data.index.get_loc(target_date, method='nearest')
             return self.data.index[idx].to_numpy()
 
-    def _rolling(self, days, average=True):
+    def _rolling(self, period, average=True):
         """Calculate rolling return of price data
 
-        :param int or str days: Number of days for the return window
+        :param str period: Number of days for the return window
         :param bool average: Whether to take the mean rolling return or
             return all individual datapoints
         :return float or pd.Series: Rolling return(s)
         """
 
+        days = parse_period(period)
         rolling = self.data.price.pct_change(days).dropna()
         if average:
             return rolling.mean()
@@ -263,21 +265,36 @@ class Ticker:
         """
         self.data.sort_index(ascending=False, inplace=True)
 
-    def _trailing(self, days, end='today'):
+    def _trailing(self, period, end='today'):
         """Calculate trailing return of price data
 
-        :param int or str days: Number of days for the return window
+        :param str period: Number of days for the return window
         :param str end: End date for point to point calculation. Either
             keyword ``today`` or a timestamp formatted ``yyyy-mm-dd``
         :return float:
         """
+
+        # Setup end date
         if end == 'today':
-            end_dt = pd.Timestamp(date.today()).to_numpy()
+            end_dt = date.today()
         else:
-            end_dt = pd.Timestamp(datetime.strptime(end, '%Y-%m-%d')).to_numpy()
-        trail_dt = end_dt - np.timedelta64(days, 'D')
-        end_price = self.price(end_dt)
-        trail_price = self.price(trail_dt)
+            end_dt = datetime.strptime(end, '%Y-%m-%d')
+
+        # Calculate trailing date
+        if '-' in period:
+            multiplier, keyword = period.split('-')
+            multiplier = int(multiplier)
+        else:
+            keyword = period
+            multiplier = 1
+        if keyword in ['day', 'month', 'year']:
+            trail_dt = end_dt - relativedelta(**{keyword + 's': multiplier})
+        else:
+            trail_dt = end_dt - timedelta(days=parse_period(period))
+
+        # Convert to NumPy format to extract prices from index
+        end_price = self.price(pd.Timestamp(end_dt).to_numpy())
+        trail_price = self.price(pd.Timestamp(trail_dt).to_numpy())
         return (end_price - trail_price) / trail_price
 
     @property
@@ -317,7 +334,7 @@ class Ticker:
             method = getattr(self, '_' + metric_type)
         except AttributeError:
             raise NotImplementedError(f'No metric defined for {metric_type}')
-        return method(parse_period(period), **kwargs)
+        return method(period, **kwargs)
 
     @property
     def name(self):

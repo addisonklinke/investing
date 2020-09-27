@@ -263,7 +263,7 @@ class Ticker:
         Order is assumed by some metrics like ``_rolling``, so we need to
         share this between the constructor and refresh methods for consistency
         """
-        self.data.sort_index(ascending=False, inplace=True)
+        self.data.sort_index(inplace=True)
 
     def _trailing(self, period, end='today'):
         """Calculate trailing return of price data

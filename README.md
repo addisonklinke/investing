@@ -9,11 +9,13 @@ Addison Klinke
 
 1. Clone this repository
 2. Install the Python requirements
+3. Run unit tests
 
 ```bash
 git clone https://github.com/addisonklinke/investing.git
 cd investing
 pip install - r requirements.txt
+python -m unittest discover
 ```
 
 ## Usage

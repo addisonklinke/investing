@@ -1,10 +1,6 @@
 # investing
 Automated scripts for monitoring long-term stock trends 
 
-## Author
-
-Addison Klinke
-
 ## Installation
 
 1. Clone this repository

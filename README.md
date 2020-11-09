@@ -7,8 +7,14 @@ Addison Klinke
 
 ## Installation
 
-1. Clone this repository `git clone https://github.com/addisonklinke/investing.git`
-2. Install the Python requirements `pip install - r requirements.txt`
+1. Clone this repository
+2. Install the Python requirements
+
+```bash
+git clone https://github.com/addisonklinke/investing.git
+cd investing
+pip install - r requirements.txt
+```
 
 ## Usage
 

@@ -90,6 +90,7 @@ def parse_period(period):
         today = datetime.today()
         keyword_durations = {
             'day': 1,
+            'week': 7,
             'month': 30,
             'quarter': 91,
             'year': 365,

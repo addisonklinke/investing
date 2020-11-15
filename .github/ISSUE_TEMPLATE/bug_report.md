@@ -26,7 +26,7 @@ What happens instead
 **Screenshots**
 If applicable, add screenshots to help explain your problem. For instance, metrics from a reputable financial source (Yahoo Finance, Morning Start, etc) that conflict with those produced by `data.Ticker.metric()`
 
-**Version:** Output from `python launcher.py --version`
+**Version:** Output from `python launcher.py --version` and/or commit hash if not running from an official release
 
 **Data Recency:** If your CSV data does *NOT* match the creation date of this issue, please specify. Otherwise, write "current"
 

@@ -245,6 +245,10 @@ class Ticker:
     def _rolling(self, period, average=True):
         """Calculate rolling return of price data
 
+        Pandas ``pct_change`` returns the percent difference in descending
+        order, i.e. ``(data[idx + n] - data[idx]) / data[idx]`` so values at
+        higher indices must increase in order for the change to be positive
+
         :param str period: Number of days for the return window
         :param bool average: Whether to take the mean rolling return or
             return all individual datapoints

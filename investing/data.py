@@ -344,7 +344,7 @@ class Ticker:
             class method
         """
         if len(self.data) == 0:
-            raise TickerDataError('No data available, try running .refresh()')
+            raise TickerDataError(f'No data available for {self.symbol}, try running .refresh()')
         try:
             metric_type, period, *options = metric_name.split('/')
         except ValueError:

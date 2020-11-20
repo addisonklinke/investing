@@ -25,6 +25,17 @@ from .exceptions import TickerDataError
 from .mappings import forex, ticker2name
 
 
+def annualize(total_return, period):
+    """Convert raw returns over time period to compounded annual rate
+
+    :param float total_return: Raw return
+    :param str/int period: Financial period interpretable by ``parse_period``
+    :return float:
+    """
+    years = parse_period(period) / 365
+    return (1 + total_return) ** (1/years) - 1
+
+
 def market_day(direction, reference='today', search_days=7):
     """Return the closest completed and valid market day
 
@@ -321,9 +332,12 @@ class Ticker:
     def metric(self, metric_name, **kwargs):
         """Parse metric names and dispatch to appropriate internal method
 
-        :param str metric_name: In the form ``metric_type/period`` where
-            ``metric_type`` is rolling, trailing, etc and ``period`` is a
-            financial period interpretable by ``parse_period``
+        :param str metric_name: 2-3 part string separated by forward slashes
+            1) metric_type: matching an implemented internal method (i.e.
+                rolling, trailing, etc)
+            2) period: a financial period interpretable by ``parse_period``
+            3) options: one or more compatible key-letter flags
+                * a: annualized
         :param dict kwargs: Metric-specifc arguments to be forwarded
         :return float: Calculated metric
         :raises NotImplementedError: For metric names with no corresponding
@@ -332,14 +346,20 @@ class Ticker:
         if len(self.data) == 0:
             raise TickerDataError('No data available, try running .refresh()')
         try:
-            metric_type, period = metric_name.split('/')
+            metric_type, period, *options = metric_name.split('/')
         except ValueError:
-            raise ValueError(f'Metric {metric_name} does not match metric_type/period format')
+            raise ValueError(f'Metric {metric_name} does not match metric_type/period/options format')
         try:
             method = getattr(self, '_' + metric_type)
         except AttributeError:
             raise NotImplementedError(f'No metric defined for {metric_type}')
-        return method(period, **kwargs)
+        result = method(period, **kwargs)
+        if len(options) > 0:
+            if 'a' in options:
+                result = annualize(result, period)
+            else:
+                warn(f'Ignoring unknown metric option(s) {options}')
+        return result
 
     @property
     def name(self):

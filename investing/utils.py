@@ -1,6 +1,23 @@
 """Utility objects that don't fit neatly into another module"""
 
 import argparse
+from itertools import filterfalse, tee
+
+
+def partition(it, pred):
+    """Split an iterable base on a predicate
+
+    From Python3 itertool's recipes
+    https://docs.python.org/dev/library/itertools.html#itertools-recipes
+
+    :param iterable it: Variable to split
+    :param callable pred: Predicte evaluating to boolean
+    :return tuple(list): First element meets condition, while second does not
+    """
+    t1, t2 = tee(it)
+    matches = list(filter(pred, t2))
+    others = list(filterfalse(pred, t1))
+    return matches, others
 
 
 def ptable_to_csv(table, filename, headers=True):

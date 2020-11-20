@@ -13,7 +13,7 @@ from investing import conf, InvestingLogging
 from investing.data import Portfolio, Ticker
 from investing.download import holdings
 import investing.exceptions as exceptions
-from investing.utils import ptable_to_csv, SubCommandDefaults
+from investing.utils import partition, ptable_to_csv, SubCommandDefaults
 
 # TODO explicit submodule imports with "import investing.x as x"
 
@@ -49,7 +49,7 @@ class Launcher(InvestingLogging):
 
         # Add workflow-specific args to each subparser
         comp_perf = subparsers['compare_performance']
-        comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols')
+        comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols (or portfolio names)')
         comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
         comp_perf.add_argument('-m', '--metrics', type=str, help='comma separate metric keywords')
 
@@ -156,7 +156,11 @@ class Launcher(InvestingLogging):
         """Calculate historical performance for several stock(s)"""
 
         # Setup data sources
-        tickers = [t.strip() for t in args.tickers.split(',')]
+        requested = [t.strip() for t in args.tickers.split(',')]
+        portfolio_names, tickers = partition(requested, lambda t: t in list(conf['portfolios'].keys()))
+        for p in portfolio_names:
+            portfolio = {p: conf['portfolios'][p]}
+            tickers.extend(self._load_portfolios(portfolio))
         self.logger.info(f'Received {len(tickers)} symbols to compare performance of')
         if args.local_only:
             self.logger.info('Using most recent local data')

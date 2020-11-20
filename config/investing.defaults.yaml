@@ -3,13 +3,13 @@ paths:
   save: /mnt/stocks
 
 portfolios:
-  - name: experts
+  experts:
     type: follow
     shared: True
     symbols:
       - GFT
       - BRK
-  - name: etf
+  etf:
     type: manual
     symbols:
       - VTI

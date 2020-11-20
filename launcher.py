@@ -102,26 +102,31 @@ class Launcher(InvestingLogging):
         else:
             return f'{p * 100:.{decimals}f}%'
 
-    def _load_portfolios(self):
+    def _load_portfolios(self, portfolios=None):
         """Helper function to load unique tickers defined in user's portfolios
 
         Sort returned tickers for better reproducibility in calling scopes
         like ``_refresh_tickers``. If a followed portfolio has the ``shared``
         flag enabled, only include commonly held tickers
+
+        :param dict{dict} portfolio: Specific portfolio to load, otherwise all
+        :return [str] tickers: Ticker symbols belonging to the portfolio(s)
         """
         tickers = []
-        for p in conf['portfolios']:
-            if p['type'] == 'manual':
-                tickers += p['symbols']
-            elif p['type'] == 'follow':
+        if portfolios is None:
+            portfolios = conf['portfolios']
+        for name, info in portfolios.items():
+            if info['type'] == 'manual':
+                tickers += info['symbols']
+            elif info['type'] == 'follow':
                 held = {}
-                for s in p['symbols']:
+                for s in info['symbols']:
                     self.logger.info(f'Downloading holdings for {s}')
                     held[s] = holdings(s)
-                if p.get('shared', False):
+                if info.get('shared', False):
                     shared = list(set.intersection(*[set(s) for s in held.values()]))
                     if len(shared) == 0:
-                        self.logger.warning(f'No shared tickers in {p["name"]} portfolio: {", ".join(p["symbols"])}')
+                        self.logger.warning(f'No shared tickers in {name} portfolio: {", ".join(info["symbols"])}')
                     tickers += shared
                 else:
                     tickers += list(chain(*held.values()))

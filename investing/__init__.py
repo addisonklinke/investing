@@ -5,6 +5,7 @@ import re
 import warnings
 import yaml
 from .exceptions import ImproperlyConfigured
+from .mappings import ticker2name
 
 # Package metadata
 __version__ = '0.2.0'
@@ -31,16 +32,16 @@ for api, key in conf['keys'].items():
     if key is None:
         raise ImproperlyConfigured(f'No API key configured for {api}')
 valid_name = re.compile('^[a-z0-9_]+$')
-for i, p in enumerate(conf['portfolios'], 1):
-    if 'name' not in p:
-        raise ImproperlyConfigured(f'Portfolio {i} must be named')
-    if not valid_name.match(p['name']):
-        raise ImproperlyConfigured(f"Name can only contain lowercase letters, numbers, and underscores: '{p['name']}'")
-    portfolio_type = p.get('type')
+for name, info in conf['portfolios'].items():
+    if not valid_name.match(name):
+        raise ImproperlyConfigured(f"Name can only contain lowercase letters, numbers, and underscores: '{name}'")
+    if name in ticker2name:
+        raise ImproperlyConfigured(f"Portfolio name cannot match ticker symbol: '{name}'")
+    portfolio_type = info.get('type')
     if portfolio_type not in ['follow', 'manual']:
         raise ImproperlyConfigured(f'Unknown type {portfolio_type} for {p["name"]} portfolio')
-    if len(p.get('symbols', [])) == 0:
-        raise ImproperlyConfigured(f'Portfolio {p["name"]} has no symbols defined')
+    if len(info.get('symbols', [])) == 0:
+        raise ImproperlyConfigured(f'Portfolio {info["name"]} has no symbols defined')
 
 # Details for APIs used in this package
 conf['endpoints'] = {

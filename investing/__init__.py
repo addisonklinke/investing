@@ -30,9 +30,12 @@ if not os.path.isdir(conf['paths']['save']):
 for api, key in conf['keys'].items():
     if key is None:
         raise ImproperlyConfigured(f'No API key configured for {api}')
+valid_name = re.compile('^[a-z0-9_]+$')
 for i, p in enumerate(conf['portfolios'], 1):
     if 'name' not in p:
         raise ImproperlyConfigured(f'Portfolio {i} must be named')
+    if not valid_name.match(p['name']):
+        raise ImproperlyConfigured(f"Name can only contain lowercase letters, numbers, and underscores: '{p['name']}'")
     portfolio_type = p.get('type')
     if portfolio_type not in ['follow', 'manual']:
         raise ImproperlyConfigured(f'Unknown type {portfolio_type} for {p["name"]} portfolio')

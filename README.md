@@ -28,9 +28,9 @@ Any values from the user-created config will take precedence over the default co
 
 You will need (free) accounts with the following websites to populate the API key fields
 
-* [Finnhub](https://finnhub.io/register)
-* [Alpha Vantage](https://www.alphavantage.co/support/#api-key)
-* [Metals API](https://metals-api.com/pricing)
+* [Alpha Vantage](https://www.alphavantage.co/support/#api-key): 20-year historical ticker prices
+* [Finnhub](https://finnhub.io/register): alternative news and sentiment data
+* [Metals API](https://metals-api.com/pricing): precious metals and foreign currencies
 
 Currently, there is not a free API that can provide 20+ year historical data on gold prices.
 The best option as of this writing appears to be the Metals API listed above which can return a 5-day

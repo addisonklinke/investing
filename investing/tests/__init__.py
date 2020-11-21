@@ -18,4 +18,5 @@ def get_dummy_data(num_days, low, high, end_date='1970-01-01'):
     end_dt = ref + timedelta(days=1)
     ts = np.arange(start_dt, end_dt, timedelta(days=1)).astype(date)
     df = pd.DataFrame(data={'price': np.arange(low, high + 1, step)}, index=pd.DatetimeIndex(ts))
+    df.index.name = 'date'
     return df

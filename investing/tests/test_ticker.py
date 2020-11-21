@@ -21,6 +21,15 @@ class TestTicker(unittest.TestCase):
         self.assertEqual(week, 70/90)
         self.assertEqual(month, 150/10)
 
+    def test_rolling(self):
+        """Test rolling returns for different periods"""
+        day = self.ticker.metric('rolling/6-day')
+        week = self.ticker.metric('rolling/2-week')
+        month = self.ticker.metric('rolling/1-month')
+        self.assertEqual(round(day, 8), 0.68506073)
+        self.assertEqual(round(week, 8), 2.05479489)
+        self.assertEqual(month, 150/10)
+
 
 if __name__ == '__main__':
 

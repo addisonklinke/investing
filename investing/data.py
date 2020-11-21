@@ -274,7 +274,7 @@ class Ticker:
             return rolling
 
     def _sort_dates(self):
-        """Place most recent dates at top
+        """Place most recent dates at bottom
 
         Order is assumed by some metrics like ``_rolling``, so we need to
         share this between the constructor and refresh methods for consistency
@@ -412,7 +412,8 @@ class Ticker:
             new = timeseries(self.symbol, length)
         if existing is not None:
             combined = pd.concat([new, existing])
-            self.data = combined[~combined.index.duplicated()]
+            combined = combined[~combined.index.duplicated()]
+            self.data = combined
         else:
             self.data = new
         self._sort_dates()

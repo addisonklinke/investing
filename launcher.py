@@ -13,7 +13,7 @@ from investing import conf, InvestingLogging
 from investing.data import Portfolio, Ticker
 from investing.download import holdings
 import investing.exceptions as exceptions
-from investing.utils import partition, ptable_to_csv, SubCommandDefaults
+from investing.utils import partition, ptable_to_csv, sort_with_na, SubCommandDefaults
 
 # TODO explicit submodule imports with "import investing.x as x"
 
@@ -48,10 +48,12 @@ class Launcher(InvestingLogging):
             subparsers.update({w: manager.add_parser(w, description=doc, help=doc)})
 
         # Add workflow-specific args to each subparser
+        cols = ['ticker', 'name', 'metric']
         comp_perf = subparsers['compare_performance']
         comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols (or portfolio names)')
         comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
         comp_perf.add_argument('-m', '--metrics', type=str, help='comma separate metric keywords')
+        comp_perf.add_argument('-s', '--sort', type=str, choices=cols, default='metric', help='sorting column')
 
         subparsers['download'].add_argument('ticker', type=str, help='symbol to search for (case insensitive)')
 
@@ -100,7 +102,7 @@ class Launcher(InvestingLogging):
         if math.isnan(p):
             return 'NaN'
         else:
-            return f'{p * 100:.{decimals}f}%'
+            return f'{p * 100:.{decimals}f}'
 
     def _load_portfolios(self, portfolios=None):
         """Helper function to load unique tickers defined in user's portfolios
@@ -174,13 +176,23 @@ class Launcher(InvestingLogging):
             metrics = conf['metrics']
         else:
             metrics = [m.strip() for m in args.metrics.split(',')]
-        comparison.field_names = ['Ticker', 'Name'] + [m.title() for m in metrics]
+        comparison.field_names = ['Ticker', 'Name'] + [m for m in metrics]
+        rows = []
         for t in tickers:
             ticker = Ticker(t)
-            comparison.add_row(
-                [t.upper(), ticker.name] + [self._format_percent(ticker.metric(m)) for m in metrics])
+            rows.append([t.upper(), ticker.name] + [self._format_percent(ticker.metric(m)) for m in metrics])
 
         # Output to console and CSV
+        if args.sort == 'metric':
+            rows = sorted(rows, key=lambda r: sort_with_na(float(r[-1]), reverse=True))
+        elif args.sort == 'ticker':
+            rows = sorted(rows, key=lambda r: r[0])
+        elif args.sort == 'name':
+            rows = sorted(rows, key=lambda r: r[1].lower())
+        else:
+            self.logger.warning(f"Unknown sorting '{args.sort}', argparse should have raised error")
+        for r in rows:
+            comparison.add_row(r)
         print(comparison)
         self.logger.info('Saving results to comparison.csv')
         ptable_to_csv(comparison, 'comparison.csv')

@@ -1,4 +1,5 @@
 import argparse
+from glob import glob
 from itertools import chain
 import logging
 import math
@@ -153,6 +154,18 @@ class Launcher(InvestingLogging):
                 continue
             self.logger.info(f'{i}/{len(tickers)}: refreshed {ticker.symbol}')
             sleep(12)
+
+    def clean_csvs(self, args):
+        """Delete local CSVs that are not used in portfolios"""
+        tickers = self._load_portfolios()
+        csvs = glob(os.path.join(conf['paths']['save'], '*.csv'))
+        removed = 0
+        for c in csvs:
+            name = os.path.basename(c).split('.')[0]
+            if name.upper() not in tickers:
+                os.remove(c)
+                removed += 1
+        self.logger.info(f'Removed {removed} of {len(csvs)} CSVs')
 
     def compare_performance(self, args):
         """Calculate historical performance for several stock(s)"""

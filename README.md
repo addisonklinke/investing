@@ -11,7 +11,7 @@ Automated scripts for monitoring long-term stock trends
 git clone https://github.com/addisonklinke/investing.git
 cd investing
 pip install - r requirements.txt
-python -m unittest discover
+python -m unittest discover -v
 ```
 
 ## Usage

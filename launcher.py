@@ -4,6 +4,7 @@ from itertools import chain
 import logging
 import math
 import os
+import re
 import sys
 from time import sleep
 from prettytable import PrettyTable
@@ -14,6 +15,7 @@ from investing import conf, InvestingLogging
 from investing.data import Portfolio, Ticker
 from investing.download import holdings
 import investing.exceptions as exceptions
+import investing.mappings as mappings
 from investing.utils import partition, ptable_to_csv, sort_with_na, SubCommandDefaults
 
 # TODO explicit submodule imports with "import investing.x as x"
@@ -67,6 +69,25 @@ class Launcher(InvestingLogging):
 
         subparsers['search'].add_argument('ticker', type=str, help='symbol to search for (case insensitive)')
         args = parser.parse_args()
+
+        # Validate configuration
+        if not os.path.isdir(conf['paths']['save']):
+            raise exceptions.ImproperlyConfigured(f'Save directory {conf["paths"]["save"]} does not exist')
+        for api, key in conf['keys'].items():
+            if key is None:
+                raise exceptions.ImproperlyConfigured(f'No API key configured for {api}')
+        valid_name = re.compile('^[a-z0-9_]+$')
+        for name, info in conf['portfolios'].items():
+            if not valid_name.match(name):
+                raise exceptions.ImproperlyConfigured(
+                    f"Name can only contain lowercase letters, numbers, and underscores: '{name}'")
+            if name in mappings.ticker2name:
+                raise exceptions.ImproperlyConfigured(f"Portfolio name cannot match ticker symbol: '{name}'")
+            portfolio_type = info.get('type')
+            if portfolio_type not in ['follow', 'manual']:
+                raise exceptions.ImproperlyConfigured(f'Unknown type {portfolio_type} for {p["name"]} portfolio')
+            if len(info.get('symbols', [])) == 0:
+                raise exceptions.ImproperlyConfigured(f'Portfolio {info["name"]} has no symbols defined')
 
         # Check parsed arguments
         if args.version:

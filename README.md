@@ -14,11 +14,6 @@ pip install - r requirements.txt
 python -m unittest discover -v
 ```
 
-## Usage
-
-The launcher script provides the primary interface for running different workflows. 
-To familiarize yourself with the available options, run `python launcher.py -h`
-
 ## Configuration
 
 Default configuration values are located in the file `config/investing.defaults.yaml`. 
@@ -49,6 +44,17 @@ from investing.data import Ticker
 xau = Ticker('xau')
 xau.data.to_csv(xau.csv_path)
 ```
+
+## Usage
+
+The launcher script provides the primary interface for running different workflows.
+To familiarize yourself with the available options, run `python launcher.py -h`
+
+A typical sequence of commands would be
+
+1. Configure a few different `portfolios` of tickers in the YAML file created above
+2. Automate a cron job for `python launcher.py daily_tickers`. This will keep your local CSVs in-sync
+3. Manually run the `compare_performance` or `expected_return` workflows for your own research
 
 ## Disclaimer
 

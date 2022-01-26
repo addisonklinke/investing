@@ -33,14 +33,15 @@ def metals(ticker, base='USD', look_back=5):
 
     :param str ticker: Case insensitive exchange symbol (i.e. XAU for gold)
     :param str base: Currency or metal code for calculating relative prices
-    :param str/int look_back: Number of days to return starting from today
-        (limited to 5 days on free tier)
+    :param str/int look_back: Number of days to return (limited to 5 on free tier)
     :return pd.DataFrame:
     """
 
-    # Check endpoint status
-    end_date = datetime.today()
+    # Setup date range (per support discussion ``end_date`` must be yesterday at most)
+    end_date = datetime.today() - timedelta(days=1)
     start_date = end_date - timedelta(days=look_back)
+
+    # Check endpoint status
     r = requests.get(
         url=conf['endpoints']['metals'],
         params={
@@ -50,7 +51,7 @@ def metals(ticker, base='USD', look_back=5):
             'start_date': start_date.strftime('%Y-%m-%d'),
             'end_date': end_date.strftime('%Y-%m-%d')})
     if not r.ok:
-        raise APIError(f'Metals API bad status code {r.status_code}')
+        raise APIError(f'Metals API bad status code {r.status_code} for {r.url}')
 
     # Parse exchange rates and format into Pandas
     data = json.loads(r.content)

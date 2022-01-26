@@ -19,6 +19,8 @@ import investing.mappings as mappings
 from investing.utils import partition, ptable_to_csv, sort_with_na, SubCommandDefaults
 
 # TODO explicit submodule imports with "import investing.x as x"
+# TODO workflow to list configured tickers without name in mapping
+# TODO portfolio column in performance table
 
 
 class Launcher(InvestingLogging):
@@ -68,6 +70,9 @@ class Launcher(InvestingLogging):
         expected_return.add_argument('-n', '--num_trials', type=int, default=1000, help='number of Monte Carlo trials')
 
         subparsers['search'].add_argument('ticker', type=str, help='symbol to search for (case insensitive)')
+
+        show_config = subparsers['show_config']
+        show_config.add_argument('-p', '--portfolios', action='store_true', help='only show portfolio names')
         args = parser.parse_args()
 
         # Validate configuration
@@ -321,8 +326,12 @@ class Launcher(InvestingLogging):
 
     def show_config(self, args):
         """Print active configuration values to console for confirmation"""
-        stream = yaml.dump(conf)
-        print(stream.replace('\n-', '\n  -'))
+        if args.portfolios:
+            for name, info in conf['portfolios'].items():
+                print(f'{name} ({len(info["symbols"])} tickers)')
+        else:
+            stream = yaml.dump(conf)
+            print(stream.replace('\n-', '\n  -'))
 
 
 if __name__ == '__main__':

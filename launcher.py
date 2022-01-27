@@ -20,7 +20,6 @@ from investing.utils import partition, ptable_to_csv, sort_with_na, SubCommandDe
 
 # TODO explicit submodule imports with "import investing.x as x"
 # TODO workflow to list configured tickers without name in mapping
-# TODO portfolio column in performance table
 
 
 class Launcher(InvestingLogging):
@@ -58,6 +57,7 @@ class Launcher(InvestingLogging):
         comp_perf.add_argument('tickers', type=str, help='comma separated ticker symbols (or portfolio names)')
         comp_perf.add_argument('-l', '--local_only', action='store_true', help='don\'t download more recent data')
         comp_perf.add_argument('-m', '--metrics', type=str, help='comma separate metric keywords')
+        comp_perf.add_argument('-p', '--portfolios', action='store_true', help='add column with portfolio name')
         comp_perf.add_argument('-s', '--sort', type=str, choices=cols, default='metric', help='sorting column')
 
         subparsers['download'].add_argument('symbols', type=str, help='tickers (case insensitive) or portfolio names')
@@ -93,6 +93,9 @@ class Launcher(InvestingLogging):
                 raise exceptions.ImproperlyConfigured(f'Unknown type {portfolio_type} for {p["name"]} portfolio')
             if len(info.get('symbols', [])) == 0:
                 raise exceptions.ImproperlyConfigured(f'Portfolio {info["name"]} has no symbols defined')
+
+        # Shared attributes
+        self.ticker2portfolio = {t: name for name, info in conf['portfolios'].items() for t in info['symbols']}
 
         # Check parsed arguments
         if args.version:
@@ -224,11 +227,18 @@ class Launcher(InvestingLogging):
             metrics = conf['metrics']
         else:
             metrics = [m.strip() for m in args.metrics.split(',')]
-        comparison.field_names = ['Ticker', 'Name'] + [m for m in metrics]
+        meta_columns = ['Ticker', 'Name']
+        if args.portfolios:
+            meta_columns.insert(1, 'Portfolio')
+        comparison.field_names = meta_columns + [m for m in metrics]
         rows = []
         for t in tickers:
             ticker = Ticker(t)
-            rows.append([t.upper(), ticker.name] + [self._format_percent(ticker.metric(m)) for m in metrics])
+            metadata = [t.upper(), ticker.name]
+            if args.portfolios:
+                metadata.insert(1, self.ticker2portfolio[t])
+            performance = [self._format_percent(ticker.metric(m)) for m in metrics]
+            rows.append(metadata + performance)
 
         # Output to console and CSV
         if args.sort == 'metric':

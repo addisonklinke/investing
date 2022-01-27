@@ -60,7 +60,7 @@ class Launcher(InvestingLogging):
         comp_perf.add_argument('-m', '--metrics', type=str, help='comma separate metric keywords')
         comp_perf.add_argument('-s', '--sort', type=str, choices=cols, default='metric', help='sorting column')
 
-        subparsers['download'].add_argument('ticker', type=str, help='symbol to search for (case insensitive)')
+        subparsers['download'].add_argument('symbols', type=str, help='tickers (case insensitive) or portfolio names')
 
         expected_return = subparsers['expected_return']
         expected_return.add_argument('tickers', type=str, help='comma separated ticker symbols')
@@ -138,12 +138,21 @@ class Launcher(InvestingLogging):
         like ``_refresh_tickers``. If a followed portfolio has the ``shared``
         flag enabled, only include commonly held tickers
 
-        :param dict{dict} portfolio: Specific portfolio to load, otherwise all
+        :param Union[Dict, List[str]] portfolios: Specific portfolio object or name(s)
+            to load, otherwise all
         :return [str] tickers: Ticker symbols belonging to the portfolio(s)
         """
         tickers = []
+
+        # Determine requested format
+        if isinstance(portfolios, str):
+            portfolios = [portfolios]
         if portfolios is None:
             portfolios = conf['portfolios']
+        elif isinstance(portfolios, list):
+            portfolios = {k: v for k, v in conf['portfolios'].items() if k in portfolios}
+
+        # Build the tickers list
         for name, info in portfolios.items():
             if info['type'] == 'manual':
                 tickers += info['symbols']
@@ -263,15 +272,27 @@ class Launcher(InvestingLogging):
         print('Configuration successfully written')
         print("Please run 'python launcher.py show_config' to confirm")
 
-    def daily_tickers(self, args):
-        """Download new time series data for followed tickers"""
-        tickers = self._load_portfolios()
-        self.logger.info(f'Checking prices for {len(tickers)} configured tickers')
-        self._refresh_tickers(tickers)
-
     def download(self, args):
-        """Manually download ticker data for a specific symbol"""
-        self._refresh_tickers([args.ticker])
+        """Download ticker data for specific symbols or portfolios"""
+
+        # Default action is to download all configured tickers from all portfolios
+        if args.symbols is None:
+            tickers = self._load_portfolios()
+            suffix = 'configured tickers'
+
+        # Otherwise the specified arg may be either portfolio names or tickers
+        else:
+            symbols = args.symbols.split(',')
+            tickers = self._load_portfolios([portfolio.strip() for portfolio in symbols])
+            if len(tickers) > 0:
+                suffix = f"tickers from portfolio(s) '{args.symbols}'"
+            else:
+                tickers = [ticker.strip() for ticker in symbols]
+                suffix = f"requested ticker(s): '{args.symbols}'"
+
+        # All options refresh tickers through the same method
+        self.logger.info(f'Checking prices for {len(tickers)} {suffix}')
+        self._refresh_tickers(tickers)
 
     def expected_return(self, args):
         """Calculate joint return probability across several holdings"""

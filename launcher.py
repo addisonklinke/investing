@@ -13,7 +13,7 @@ import yaml
 from investing import __version__
 from investing import conf, InvestingLogging
 from investing.data import Portfolio, Ticker
-from investing.download import holdings
+from investing.download import Holdings
 import investing.exceptions as exceptions
 import investing.mappings as mappings
 from investing.utils import partition, ptable_to_csv, sort_with_na, SubCommandDefaults
@@ -163,7 +163,7 @@ class Launcher(InvestingLogging):
                 held = {}
                 for s in info['symbols']:
                     self.logger.info(f'Downloading holdings for {s}')
-                    held[s] = holdings(s)
+                    held[s] = Holdings(s).download()
                 if info.get('shared', False):
                     shared = list(set.intersection(*[set(s) for s in held.values()]))
                     if len(shared) == 0:

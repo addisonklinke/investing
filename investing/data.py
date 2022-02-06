@@ -159,29 +159,47 @@ class Portfolio:
         and slow to compute for multiple ETFs
 
         :return dict positions: Where keys are company-level tickers and values
-        are lists of tuples containing the source ticker (either the company
-        itself or the ETF holding it) and the company's weight within the source.
-        For example
+        are lists of dictionaries containing the source ticker (either the company
+        itself or the ETF holding it) and the company's weight within the source
+        and portfolio as a whole. For example
 
             {
                 'AAPL': [
-                    ('VTI', 0.02),
-                    ('VGT', 0.13),
+                    {
+                        'source': 'VTI',
+                        'source_weight': 0.04,
+                        'portfolio_weight': 0.02,
+                    },
+                    {
+                        'source': 'VGT',
+                        'source_weight': 0.12,
+                        'portfolio_weight': 0.05,
+                    }
                 ],
                 'AMZN': [
-                    ('AMZN', 1.0),
+                    {
+                        'source': 'AMZN',
+                        'source_weight': 1.0,
+                        'portfolio_weight': 0.23,
+                    }
                 ]
             }
         """
         if self._company_positions is None:
             self._company_positions = defaultdict(list)
-            for ticker in self.tickers:
+            for ticker, weight in zip(self.tickers, self.weights):
                 symbol = ticker.symbol.upper()
                 if ticker.holdings is None:
-                    self._company_positions[symbol].append((symbol, 1))
+                    self._company_positions[symbol].append({
+                        'source': symbol,
+                        'source_weight': 1,
+                        'portfolio_weight': weight})
                 else:
                     for i, row in ticker.holdings.iterrows():
-                        self._company_positions[row.symbol].append((symbol, row.pct))
+                        self._company_positions[row.symbol].append({
+                            'source': symbol,
+                            'source_weight': row.pct,
+                            'portfolio_weight': row.pct * weight})
         return self._company_positions
 
     def expected_return(self, period, n=1000):
@@ -217,13 +235,13 @@ class Portfolio:
         :return dict duplicates: Following the same structure as ``self.company_positions``
         """
         duplicates = {}
-        for company, info in self.company_positions.items():
-            held_by = {i[0] for i in info}
+        for company, sources in self.company_positions.items():
+            held_by = {s['source'] for s in sources}
             if len(held_by) == 1:
                 continue
-            percents = [i[1] for i in info]
+            percents = [s['source_weight'] for s in sources]
             if any(percent >= thres for percent in percents):
-                duplicates.update({company: info})
+                duplicates.update({company: sources})
         return duplicates
 
 

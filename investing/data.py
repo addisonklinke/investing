@@ -294,7 +294,7 @@ class Ticker:
         # Holdings (if an ETF or other combined fund)
         self.holdings_path = os.path.join(conf['paths']['save'], f'{symbol.lower()}.holdings.csv')
         if os.path.isfile(self.holdings_path):
-            self.holdings = pd.read_csv(self.holdings_path)
+            self.holdings = pd.read_csv(self.holdings_path, keep_default_na=False)  # In case of "NA" ticker
         else:
             self.holdings = None
 

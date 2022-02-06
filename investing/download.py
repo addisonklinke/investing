@@ -206,7 +206,7 @@ class Holdings:
 
         # Some tickers won't match the regex so the lambda in ``apply`` needs a default
         # See proposed solutions here: https://stackoverflow.com/q/2492087/7446465
-        symbol_regex = re.compile('\(([A-Z]+)\)')
+        symbol_regex = re.compile('\(([A-Z0-9]+)\)')
         unparseable_symbol = '<UNK>'
         holdings['symbol'] = holdings['symbol'].apply(
             lambda s: (symbol_regex.findall(s)[0:1] or [unparseable_symbol])[0])

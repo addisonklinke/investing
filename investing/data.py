@@ -20,9 +20,11 @@ import pandas_market_calendars as mcal
 import pytz
 import numpy as np
 from . import conf
-from .download import metals, timeseries
+from .download import Holdings, metals, timeseries
 from .exceptions import TickerDataError
 from .mappings import forex, ticker2name
+
+# TODO handle pricing for stock splits
 
 
 def annualize(total_return, period):
@@ -193,6 +195,8 @@ class Ticker:
         """
 
         self.symbol = symbol.upper()
+
+        # The primary ticker timeseries
         self.csv_path = os.path.join(conf['paths']['save'], f'{symbol.lower()}.csv')
         if os.path.isfile(self.csv_path):
             self.data = pd.read_csv(
@@ -214,6 +218,13 @@ class Ticker:
         else:
             self.data = pd.DataFrame(columns=['price'])
         self._sort_dates()
+
+        # Holdings (if an ETF or other combined fund)
+        self.holdings_path = os.path.join(conf['paths']['save'], f'{symbol.lower()}.holdings.csv')
+        if os.path.isfile(self.holdings_path):
+            self.holdings = pd.read_csv(self.holdings_path)
+        else:
+            self.holdings = None
 
     def __str__(self):
         """Full company name"""
@@ -386,10 +397,13 @@ class Ticker:
                 raise ValueError(f'Requested date {date} not in data')
         return self.data.loc[date].price
 
-    def refresh(self):
+    def refresh(self, holdings=False):
         """Refresh local ticker data
 
         Idempotent behavior if data is already current
+
+        :param bool holdings: Whether or not to attempt refreshing the fund holdings
+        :return None: Updates the ``self.data`` attribute and merges CSV data on disk
         """
 
         # Check status of existing data
@@ -418,3 +432,9 @@ class Ticker:
             self.data = new
         self._sort_dates()
         self.data.to_csv(self.csv_path)
+
+        # Update holdings
+        if holdings:
+            latest = Holdings(self.symbol).download()
+            latest.to_csv(self.holdings_path, index=False)
+            self.holdings = latest

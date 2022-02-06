@@ -30,7 +30,15 @@ conf['endpoints'] = {
     'finnhub': {
         'sentiment': 'https://finnhub.io/api/v1/news-sentiment',
         'news': 'https://finnhub.io/api/v1/news'},
-    'metals': 'https://metals-api.com/api/timeseries'}
+    'metals': 'https://metals-api.com/api/timeseries',
+    'vanguard': 'https://investor.vanguard.com/etf/profile/portfolio/{}/portfolio-holdings'}
+
+# Web scraping constants for Selenium
+conf['css'] = {
+    'vanguard': {
+        'table': '#content-region table.holdings-table',
+        'next_btn': 'div.portfolio-pagination-links > span > a[data-ng-click="goToNextPage()"]',
+        'inactive_cls': 'inActiveLink'}}
 
 
 class InvestingLogging:

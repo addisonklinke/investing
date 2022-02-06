@@ -3,26 +3,13 @@
 from datetime import datetime, timedelta
 import json
 import os
+import re
 import pandas as pd
 import requests
 from . import conf
 from .exceptions import APIError
-
-
-def holdings(ticker):
-    """Save list of stock holdings for a particular company.
-
-    :param str ticker: Company ticker (case insensitive).
-    :return [str] held_tickers: Tickers of company holdings.
-    """
-    r = requests.get(conf['endpoints']['dataroma'], {'m': ticker}, headers={"User-Agent": "XY"})
-    try:
-        tables = pd.read_html(r.content)
-    except ValueError:
-        raise APIError(f'No tables found for {ticker}, download.holdings() scraper may need to be updated')
-    holdings = tables[0]
-    held_tickers = [s.split('-')[0].strip() for s in holdings.Stock]
-    return held_tickers
+from .mappings import ticker2name
+from .utils import paginate_selenium_table
 
 
 def metals(ticker, base='USD', look_back=5):
@@ -139,3 +126,95 @@ def timeseries(ticker, length='compact'):
     df = pd.DataFrame({'price': prices}, index=pd.DatetimeIndex(dates))
     df.index.name = 'date'
     return df
+
+
+class Holdings:
+    """Dispatch to appropriate download function depending on issuer"""
+
+    # TODO combine all types of data downloads (news, sentiment, etc) under a single class-based client
+    # Then it could be an attribute the ``Ticker`` class uses to refresh
+
+    def __init__(self, symbol):
+        """Pull in name from mapping
+
+        :param str symbol: Ticker symbol (case insensitive)
+        """
+        self.symbol = symbol.upper()
+        self.name = ticker2name.get(self.symbol)
+
+    def download(self, **kwargs):
+        """Get weighted set of stock holdings for a particular fund/company
+
+        :param kwargs: To pass on to individual methods
+        :return pd.Dataframe df: With columns for
+            * symbol: The uppercase ticker symbol
+            * pct: Percent of portfolio (sorted highest first)
+        """
+
+        # Check common ETF issuers (i.e. Vanguard, iShares, etc)
+        configured_issuers = ['vanguard']
+        download_method = None
+        if self.name is not None:
+            for issuer in configured_issuers:
+                if issuer in self.name.lower():
+                    download_method = issuer
+                    break
+
+        # Otherwise the symbol may be a company listed on Dataroma
+        if download_method is None:
+            download_method = 'dataroma'
+
+        # Execute the dispatch
+        method = getattr(self, download_method, None)
+        if method is None:
+            raise NotImplementedError(f'Could not find download method Holdings.{download_method}()')
+        df = method(**kwargs)
+        if len(df) == 0:
+            raise APIError(f'Empty table return for {self.symbol} from Holdings.{download_method}()')
+        if df.columns.to_list() != ['symbol', 'pct']:
+            raise AttributeError('Expected dataframe to have columns [symbol, pct]')
+        df.sort_values('pct', ascending=False, inplace=True)
+        df.reset_index(inplace=True, drop=True)
+        return df
+
+    def dataroma(self):
+        """Used for individuals and companies who are required to file form 13F by the SEC"""
+
+        # Download the table
+        r = requests.get(conf['endpoints']['dataroma'], {'m': 'GFT'}, headers={"User-Agent": "XY"})
+        try:
+            tables = pd.read_html(r.content)
+        except ValueError:
+            raise APIError(f'No tables found for {self.symbol}, download.Holdings scraper may need to be updated')
+
+        # Reformat dataframe
+        holdings = tables[0].loc[:, ('Stock', '% ofPortfolio')]
+        holdings.rename(columns={'Stock': 'symbol', '% ofPortfolio': 'pct'}, inplace=True)
+        holdings['symbol'] = holdings['symbol'].apply(lambda s: s.split('-')[0].strip())
+        return holdings
+
+    def vanguard(self, progress=False):
+        """Lookup ETF holdings from website"""
+
+        # Scrape the raw HTML
+        holdings = paginate_selenium_table(
+            url=conf['endpoints']['vanguard'].format(self.symbol),
+            progress=progress,
+            **conf['css']['vanguard'])
+        holdings.rename(columns={'Holdings': 'symbol'}, inplace=True)
+        holdings = holdings[~holdings.symbol.isna()]
+
+        # Some tickers won't match the regex so the lambda in ``apply`` needs a default
+        # See proposed solutions here: https://stackoverflow.com/q/2492087/7446465
+        symbol_regex = re.compile('\(([A-Z]+)\)')
+        unparseable_symbol = '<UNK>'
+        holdings['symbol'] = holdings['symbol'].apply(
+            lambda s: (symbol_regex.findall(s)[0:1] or [unparseable_symbol])[0])
+        holdings = holdings[holdings.symbol != unparseable_symbol]
+
+        # Percentage column comes in as rounded string, so more precise values are obtained by calculating ourselves
+        holdings['Market value'] = holdings['Market value'].replace('[\$,]', '', regex=True).astype(float)
+        total_value = holdings['Market value'].sum()
+        holdings['pct'] = holdings['Market value'].apply(lambda m: m/total_value)
+        holdings = holdings.loc[:, ('symbol', 'pct')]
+        return holdings

@@ -4,6 +4,48 @@ import argparse
 from itertools import filterfalse, tee
 import math
 
+import pandas as pd
+from selenium import webdriver
+
+
+def paginate_selenium_table(url, table, next_btn, inactive_cls, progress=False):
+    """Iterate through pages of a website table using Selenium
+
+    :param str url: Address of the page with table
+    :param str table: CSS selector for Selenium to retrieve the ``<table>``
+        element from the page
+    :param str next_btn: CSS selector for the next page button
+    :param str inactive_cls: CSS class assigned to the next button once the final
+        page has been reached. This is used to stop iteration
+    :param bool progress: Whether to print the live page count
+    :return pd.Dataframe df: Pandas dataframe of all table pages combined
+    """
+
+    # Navigate to the page
+    driver = webdriver.Chrome()
+    driver.implicitly_wait(30)
+    driver.get(url)
+
+    # Iterate through the table
+    tables = []
+    page = 0
+    while True:
+        html = driver.find_element_by_css_selector(table).get_attribute('outerHTML')
+        tables.extend(pd.read_html(html))
+        if progress:
+            print(f'Page {page}', end='\r')
+        next_elem = driver.find_element_by_css_selector(next_btn)
+        if next_elem.get_attribute('class') == inactive_cls:
+            break
+        next_elem.click()
+        page += 1
+    driver.close()
+
+    # Rows from the same page will have duplicate indices unless reset
+    df = pd.concat(tables)
+    df.reset_index(inplace=True, drop=True)
+    return df
+
 
 def partition(it, pred):
     """Split an iterable base on a predicate

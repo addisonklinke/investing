@@ -92,7 +92,7 @@ class Launcher(InvestingLogging):
             if portfolio_type not in ['follow', 'manual']:
                 raise exceptions.ImproperlyConfigured(f'Unknown type {portfolio_type} for {p["name"]} portfolio')
             if len(info.get('symbols', [])) == 0:
-                raise exceptions.ImproperlyConfigured(f'Portfolio {info["name"]} has no symbols defined')
+                raise exceptions.ImproperlyConfigured(f'Portfolio {name} has no symbols defined')
 
         # Shared attributes
         self.ticker2portfolio = {t: name for name, info in conf['portfolios'].items() for t in info['symbols']}

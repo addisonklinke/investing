@@ -220,6 +220,27 @@ class Portfolio:
         composite = np.sum(individual * np.array(self.weights).reshape((-1, 1)), axis=0)
         return composite.mean(), composite.std(), min(len(s) for s in sample_pools)
 
+    def exposure(self, symbol):
+        """Weight of a specific company within the portfolio
+
+        :param str symbol: Case insensitive ticker
+        :return float: Total weight across the portfolio
+        """
+        symbol = symbol.upper()
+        if symbol not in self.company_positions:
+            raise KeyError(f'{symbol} not found in company positions')
+        return sum(s['portfolio_weight'] for s in self.company_positions[symbol])
+
+    def max_exposure(self, limit=10):
+        """Top N companies across portfolio
+
+        :param int limit: Maximum number of companies to return
+        :return List[Tuple] exposures: Symbol of total portfolio weight
+        """
+        exposures = [(symbol, self.exposure(symbol)) for symbol in self.company_positions]
+        exposures = sorted(exposures, key=lambda tup: tup[1], reverse=True)
+        return exposures[:limit]
+
     @property
     def name(self):
         """Human readable naming for all holdings via call to internal __str__"""

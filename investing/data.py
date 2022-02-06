@@ -10,6 +10,7 @@ The data module also contains several useful helper functions for parsing
 common financial periods and querying valid market days.
 """
 
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import os
@@ -140,6 +141,7 @@ class Portfolio:
         else:
             self.weights = weights
         self.tickers = [Ticker(t) for t in tickers]
+        self._company_positions = None
 
     def __str__(self):
         """Human readable naming for all holdings"""
@@ -148,6 +150,39 @@ class Portfolio:
     def __repr__(self):
         """Displayable instance name for print() function"""
         return f'Portfolio[{str(self)}]'
+
+    @property
+    def company_positions(self):
+        """Expand any ETFs into their constituent holdings
+
+        Cache the structure as a private attribute since it can be rather large
+        and slow to compute for multiple ETFs
+
+        :return dict positions: Where keys are company-level tickers and values
+        are lists of tuples containing the source ticker (either the company
+        itself or the ETF holding it) and the company's weight within the source.
+        For example
+
+            {
+                'AAPL': [
+                    ('VTI', 0.02),
+                    ('VGT', 0.13),
+                ],
+                'AMZN': [
+                    ('AMZN', 1.0),
+                ]
+            }
+        """
+        if self._company_positions is None:
+            self._company_positions = defaultdict(list)
+            for ticker in self.tickers:
+                symbol = ticker.symbol.upper()
+                if ticker.holdings is None:
+                    self._company_positions[symbol].append((symbol, 1))
+                else:
+                    for i, row in ticker.holdings.iterrows():
+                        self._company_positions[row.symbol].append((symbol, row.pct))
+        return self._company_positions
 
     def expected_return(self, period, n=1000):
         """Monte-Carlo simulation of typical return and standard deviation
@@ -171,6 +206,25 @@ class Portfolio:
     def name(self):
         """Human readable naming for all holdings via call to internal __str__"""
         return str(self)
+
+    def duplicate_positions(self, thres=0.01):
+        """Determine any companies shared across ETFs
+
+        :param float thres: Minimum percent of the company within ETF to count as
+            a duplicate. For instance, AAPL is 21% of VGT and 5.8% of VTI, so under
+            the default threshold it would be flagged as a duplicate. However, MU
+            is only 0.77% of VGT and 0.22% of VTI so it would not be flagged
+        :return dict duplicates: Following the same structure as ``self.company_positions``
+        """
+        duplicates = {}
+        for company, info in self.company_positions.items():
+            held_by = {i[0] for i in info}
+            if len(held_by) == 1:
+                continue
+            percents = [i[1] for i in info]
+            if any(percent >= thres for percent in percents):
+                duplicates.update({company: info})
+        return duplicates
 
 
 class Ticker:

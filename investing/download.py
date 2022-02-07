@@ -201,6 +201,7 @@ class Holdings:
         holdings = paginate_selenium_table(r.url, progress=progress, **conf['css']['invesco'])
         holdings.rename(columns={'Ticker': 'symbol', '% of Fund': 'pct'}, inplace=True)
         holdings = holdings.loc[:, ('symbol', 'pct')]
+        holdings.pct = holdings.pct/100
         return holdings
 
     def vanguard(self, progress=False):

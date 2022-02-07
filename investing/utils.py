@@ -8,15 +8,17 @@ import pandas as pd
 from selenium import webdriver
 
 
-def paginate_selenium_table(url, table, next_btn, inactive_cls, progress=False):
+def paginate_selenium_table(url, table, next_btn=None, inactive_cls=None, progress=False):
     """Iterate through pages of a website table using Selenium
 
     :param str url: Address of the page with table
     :param str table: CSS selector for Selenium to retrieve the ``<table>``
         element from the page
-    :param str next_btn: CSS selector for the next page button
-    :param str inactive_cls: CSS class assigned to the next button once the final
-        page has been reached. This is used to stop iteration
+    :param Optional[str] next_btn: CSS selector for the next page button. Only
+        required if the table is paginated
+    :param Optional[str] inactive_cls: CSS class assigned to the next button once the final
+        page has been reached. This is used to stop iteration. Only required if the table
+        is paginated
     :param bool progress: Whether to print the live page count
     :return pd.Dataframe df: Pandas dataframe of all table pages combined
     """
@@ -34,6 +36,8 @@ def paginate_selenium_table(url, table, next_btn, inactive_cls, progress=False):
         tables.extend(pd.read_html(html))
         if progress:
             print(f'Page {page}', end='\r')
+        if next_btn is None:
+            break
         next_elem = driver.find_element_by_css_selector(next_btn)
         if next_elem.get_attribute('class') == inactive_cls:
             break

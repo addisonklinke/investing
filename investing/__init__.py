@@ -30,6 +30,7 @@ conf['endpoints'] = {
     'finnhub': {
         'sentiment': 'https://finnhub.io/api/v1/news-sentiment',
         'news': 'https://finnhub.io/api/v1/news'},
+    'invesco': 'https://www.invesco.com/us/financial-products/etfs/holdings',
     'metals': 'https://metals-api.com/api/timeseries',
     'vanguard': 'https://investor.vanguard.com/etf/profile/portfolio/{}/portfolio-holdings'}
 
@@ -38,7 +39,11 @@ conf['css'] = {
     'vanguard': {
         'table': '#content-region table.holdings-table',
         'next_btn': 'div.portfolio-pagination-links > span > a[data-ng-click="goToNextPage()"]',
-        'inactive_cls': 'inActiveLink'}}
+        'inactive_cls': 'inActiveLink'},
+    'invesco': {
+        'table': '#etf-holdings-table',
+        'next_btn': None,
+        'inactive_cls': None}}
 
 
 class InvestingLogging:

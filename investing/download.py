@@ -152,7 +152,7 @@ class Holdings:
         """
 
         # Check common ETF issuers (i.e. Vanguard, iShares, etc)
-        configured_issuers = ['vanguard']
+        configured_issuers = ['vanguard', 'invesco']
         download_method = None
         if self.name is not None:
             for issuer in configured_issuers:
@@ -191,6 +191,16 @@ class Holdings:
         holdings = tables[0].loc[:, ('Stock', '% ofPortfolio')]
         holdings.rename(columns={'Stock': 'symbol', '% ofPortfolio': 'pct'}, inplace=True)
         holdings['symbol'] = holdings['symbol'].apply(lambda s: s.split('-')[0].strip())
+        return holdings
+
+    def invesco(self, progress=False):
+        """Lookup ETF holdings from website"""
+        params = {'audienceType': 'Investor', 'ticker': self.symbol.upper()}
+        r = requests.models.PreparedRequest()
+        r.prepare_url(conf['endpoints']['invesco'], params)
+        holdings = paginate_selenium_table(r.url, progress=progress, **conf['css']['invesco'])
+        holdings.rename(columns={'Ticker': 'symbol', '% of Fund': 'pct'}, inplace=True)
+        holdings = holdings.loc[:, ('symbol', 'pct')]
         return holdings
 
     def vanguard(self, progress=False):
